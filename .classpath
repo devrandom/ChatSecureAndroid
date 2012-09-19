@@ -9,5 +9,6 @@
 	<classpathentry kind="lib" path="libs/guava-r09.jar"/>
 	<classpathentry kind="lib" path="libs/asmack-android-7.jar" sourcepath="asmack/build/src/trunk"/>
 	<classpathentry exported="true" kind="con" path="com.android.ide.eclipse.adt.LIBRARIES"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/ActionBarSherlock"/>
 	<classpathentry kind="output" path="bin/classes"/>
 </classpath>
