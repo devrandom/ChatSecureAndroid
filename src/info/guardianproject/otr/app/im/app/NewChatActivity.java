@@ -71,6 +71,8 @@ public class NewChatActivity extends SherlockActivity implements View.OnCreateCo
     private ChatSwitcher mChatSwitcher;
     private LayoutInflater mInflater;
 
+    private long mAccountId = -1;
+    
     ContextMenuHandler mContextMenuHandler;
 
     @Override
@@ -80,6 +82,9 @@ public class NewChatActivity extends SherlockActivity implements View.OnCreateCo
      //   requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         setContentView(R.layout.chat_view);
+        
+        getSherlock().getActionBar().setHomeButtonEnabled(true);
+        getSherlock().getActionBar().setDisplayHomeAsUpEnabled(true);
 
         mChatView = (ChatView) findViewById(R.id.chatView);
         mHandler = mChatView.getHandler();
@@ -119,9 +124,9 @@ public class NewChatActivity extends SherlockActivity implements View.OnCreateCo
     void resolveIntent(Intent intent) {
         if (requireOpenDashboardOnStart(intent)) {
             long providerId = intent.getLongExtra(ImServiceConstants.EXTRA_INTENT_PROVIDER_ID, -1L);
-            final long accountId = intent.getLongExtra(ImServiceConstants.EXTRA_INTENT_ACCOUNT_ID,
+            mAccountId = intent.getLongExtra(ImServiceConstants.EXTRA_INTENT_ACCOUNT_ID,
                     -1L);
-            if (providerId == -1L || accountId == -1L) {
+            if (providerId == -1L || mAccountId == -1L) {
                 finish();
             } else {
                 mChatSwitcher.open();
@@ -131,6 +136,8 @@ public class NewChatActivity extends SherlockActivity implements View.OnCreateCo
 
         if (ImServiceConstants.ACTION_MANAGE_SUBSCRIPTION.equals(intent.getAction())) {
             long providerId = intent.getLongExtra(ImServiceConstants.EXTRA_INTENT_PROVIDER_ID, -1);
+            mAccountId = intent.getLongExtra(ImServiceConstants.EXTRA_INTENT_ACCOUNT_ID,
+                    -1L);
             String from = intent.getStringExtra(ImServiceConstants.EXTRA_INTENT_FROM_ADDRESS);
             if ((providerId == -1) || (from == null)) {
                 finish();
@@ -188,6 +195,10 @@ public class NewChatActivity extends SherlockActivity implements View.OnCreateCo
             }
             return true;
 
+        case android.R.id.home:
+            showChatList();
+            return true;
+            
         case R.id.menu_view_accounts:
             startActivity(new Intent(getBaseContext(), ChooseAccountActivity.class));
             finish();
@@ -216,6 +227,14 @@ public class NewChatActivity extends SherlockActivity implements View.OnCreateCo
         }
 
         return super.onOptionsItemSelected(item);
+    }
+    
+    private void showChatList ()
+    {
+     //   Intent intent = new Intent (this, ChatListActivity.class);
+      //  intent.putExtra(ImServiceConstants.EXTRA_INTENT_ACCOUNT_ID, mAccountId);
+       // startActivity(intent);
+        finish();
     }
 
     @Override
@@ -278,12 +297,12 @@ public class NewChatActivity extends SherlockActivity implements View.OnCreateCo
 
     }
 
-//    private void showRosterScreen() {
-//        Intent intent = new Intent(Intent.ACTION_VIEW);
-//        intent.setClass(this, ContactListActivity.class);
-//        intent.putExtra(ImServiceConstants.EXTRA_INTENT_ACCOUNT_ID, mChatView.getAccountId());
-//        startActivity(intent);
-//    }
+   private void showRosterScreen() {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setClass(this, ContactListActivity.class);
+        intent.putExtra(ImServiceConstants.EXTRA_INTENT_ACCOUNT_ID, mChatView.getAccountId());
+        startActivity(intent);
+    }
 
 //    private void showSmileyDialog() {
 //        if (mSmileyDialog == null) {
@@ -362,21 +381,21 @@ public class NewChatActivity extends SherlockActivity implements View.OnCreateCo
         mChatSwitcher.rotateChat(delta, contact, accountId, providerId);
     }
 
-//    private void startContactPicker() {
-//        Uri.Builder builder = Imps.Contacts.CONTENT_URI_ONLINE_CONTACTS_BY.buildUpon();
-//        ContentUris.appendId(builder, mChatView.getProviderId());
-//        ContentUris.appendId(builder, mChatView.getAccountId());
-//        Uri data = builder.build();
-//
-//        try {
-//            Intent i = new Intent(Intent.ACTION_PICK, data);
-//            i.putExtra(ContactsPickerActivity.EXTRA_EXCLUDED_CONTACTS, mChatView
-//                    .getCurrentChatSession().getPariticipants());
-//            startActivityForResult(i, REQUEST_PICK_CONTACTS);
-//        } catch (RemoteException e) {
-//            mHandler.showServiceErrorAlert();
-//        }
-//    }
+    private void startContactPicker() {
+        Uri.Builder builder = Imps.Contacts.CONTENT_URI_ONLINE_CONTACTS_BY.buildUpon();
+        ContentUris.appendId(builder, mChatView.getProviderId());
+        ContentUris.appendId(builder, mChatView.getAccountId());
+        Uri data = builder.build();
+
+        try {
+            Intent i = new Intent(Intent.ACTION_PICK, data);
+            i.putExtra(ContactsPickerActivity.EXTRA_EXCLUDED_CONTACTS, mChatView
+                    .getCurrentChatSession().getPariticipants());
+            startActivityForResult(i, REQUEST_PICK_CONTACTS);
+        } catch (RemoteException e) {
+            mHandler.showServiceErrorAlert();
+        }
+    }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {

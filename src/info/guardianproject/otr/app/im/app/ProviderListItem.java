@@ -22,6 +22,7 @@ import info.guardianproject.otr.app.im.provider.Imps;
 
 import info.guardianproject.otr.app.im.R;
 
+import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.res.ColorStateList;
@@ -38,7 +39,7 @@ public class ProviderListItem extends LinearLayout {
     private static final String TAG = "IM";
     private static final boolean LOCAL_DEBUG = false;
 
-    private LandingPage mActivity;
+    private Activity mActivity;
     //private ImageView mProviderIcon;
     private ImageView mStatusIcon;
     private TextView mProviderName;
@@ -55,11 +56,11 @@ public class ProviderListItem extends LinearLayout {
     private int mAccountPresenceStatusColumn;
     private int mAccountConnectionStatusColumn;
 
-    private ColorStateList mProviderNameColors;
-    private ColorStateList mLoginNameColors;
-    private ColorStateList mChatViewColors;
+   // private ColorStateList mProviderNameColors;
+   // private ColorStateList mLoginNameColors;
+   // private ColorStateList mChatViewColors;
 
-    public ProviderListItem(Context context, LandingPage activity) {
+    public ProviderListItem(Context context, Activity activity) {
         super(context);
         mActivity = activity;
     }
@@ -84,9 +85,9 @@ public class ProviderListItem extends LinearLayout {
         mAccountConnectionStatusColumn = c
                 .getColumnIndexOrThrow(Imps.Provider.ACCOUNT_CONNECTION_STATUS);
 
-        mProviderNameColors = mProviderName.getTextColors();
-        mLoginNameColors = mLoginName.getTextColors();
-        mChatViewColors = mChatView.getTextColors();
+     //   mProviderNameColors = mProviderName.getTextColors();
+     //   mLoginNameColors = mLoginName.getTextColors();
+     //   mChatViewColors = mChatView.getTextColors();
     }
 
     public void bindView(Cursor cursor) {
@@ -107,9 +108,9 @@ public class ProviderListItem extends LinearLayout {
         mUnderBubble.setBackgroundDrawable(mDefaultBackground);
         statusIcon.setVisibility(View.GONE);
 
-        providerName.setTextColor(mProviderNameColors);
-        loginName.setTextColor(mLoginNameColors);
-        chatView.setTextColor(mChatViewColors);
+      //  providerName.setTextColor(mProviderNameColors);
+       // loginName.setTextColor(mLoginNameColors);
+       // chatView.setTextColor(mChatViewColors);
 
         if (!cursor.isNull(mActiveAccountIdColumn)) {
             mLoginName.setVisibility(View.VISIBLE);
@@ -142,9 +143,12 @@ public class ProviderListItem extends LinearLayout {
                     chatView.setVisibility(View.VISIBLE);
                     chatView.setText(r.getString(R.string.conversations, count));
 
-                    providerName.setTextColor(0xff000000);
+                    if (mUnderBubble.getVisibility() != mUnderBubble.GONE)
+                    {
+                     providerName.setTextColor(0xff000000);
                     loginName.setTextColor(0xff000000);
                     chatView.setTextColor(0xff000000);
+                    }
                 } else {
                     chatView.setVisibility(View.GONE);
                 }
