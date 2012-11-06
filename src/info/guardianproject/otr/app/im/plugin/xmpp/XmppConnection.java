@@ -480,7 +480,6 @@ public class XmppConnection extends ImConnection implements CallbackHandler {
     private void initConnection(String userName, final String password,
             Imps.ProviderSettings.QueryMap providerSettings) throws Exception {
 
-        //android.os.Debug.waitForDebugger();
 
         boolean allowPlainAuth = providerSettings.getAllowPlainAuth();
         boolean requireTls = providerSettings.getRequireTls();
@@ -534,6 +533,8 @@ public class XmppConnection extends ImConnection implements CallbackHandler {
                 mConfig = new ConnectionConfiguration(domain, serverPort);
             else
                 mConfig = new ConnectionConfiguration(domain, serverPort, mProxyInfo);
+            
+            server = domain;
 
         } else {
             debug(TAG, "(use server) ConnectionConfiguration(" + server + ", " + serverPort + ", "
@@ -746,7 +747,7 @@ public class XmppConnection extends ImConnection implements CallbackHandler {
             }
         });
 
-        if (server.contains(IS_GOOGLE)) {
+        if (server != null && server.contains(IS_GOOGLE)) {
             this.mUsername = userName + '@' + domain;
         } else {
             this.mUsername = userName;
@@ -811,9 +812,13 @@ public class XmppConnection extends ImConnection implements CallbackHandler {
 
     }
 
-    void sslCertificateError() {
-        this.disconnect();
-    }
+    /*
+     * this does nothing
+    void sslCertificateError() {        
+        disconnect();
+        disconnected(new ImErrorInfo(ImErrorInfo.CANT_CONNECT_TO_SERVER,
+                "SSL Certificate Error"));
+    }*/
 
     // We must release resources here, because we will not be reused
     void disconnected(ImErrorInfo info) {

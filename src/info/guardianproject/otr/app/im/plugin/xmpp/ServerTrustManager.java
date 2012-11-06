@@ -25,20 +25,19 @@ import info.guardianproject.bouncycastle.asn1.DERString;
 import info.guardianproject.bouncycastle.asn1.x509.GeneralName;
 import info.guardianproject.bouncycastle.asn1.x509.X509Extensions;
 import info.guardianproject.otr.app.im.R;
-import info.guardianproject.otr.app.im.service.RemoteImService;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
+import java.security.KeyStoreException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.Principal;
-import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -48,6 +47,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.net.ssl.X509TrustManager;
+import javax.security.auth.x500.X500Principal;
 
 import org.jivesoftware.smack.ConnectionConfiguration;
 
@@ -67,16 +67,15 @@ class ServerTrustManager implements X509TrustManager {
 
     private static final String TAG = "GB.SSL";
     private final static Pattern cnPattern = Pattern.compile("(?i)(cn=)([^,]*)");
-    private final static Pattern oPattern = Pattern.compile("(?i)(o=)([^,]*)");
-
-    private final static String FINGERPRINT_TYPE = "SHA1";
 
     private ConnectionConfiguration configuration;
 
     /** Holds the domain of the remote server we are trying to connect */
     private String server;
     private String domain;
-    private KeyStore trustStore;
+    
+    private KeyStore mTrustStore; //root CAs
+    private KeyStore mPinnedStore; //pinned certs
 
     /**
      * Construct a trust manager for XMPP connections. Certificates are
@@ -90,9 +89,14 @@ class ServerTrustManager implements X509TrustManager {
      * @param domain - the domain requested by the user
      * @param requestedServer - the connect server requested by the user
      * @param configuration - the XMPP configuration
+     * @throws KeyStoreException 
+     * @throws IOException 
+     * @throws CertificateException 
+     * @throws NoSuchAlgorithmException 
      */
     public ServerTrustManager(Context context, String domain, String requestedServer,
-            ConnectionConfiguration configuration) {
+            ConnectionConfiguration configuration) throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException {
+
         this.configuration = configuration;
         this.domain = domain;
         this.server = requestedServer;
@@ -101,188 +105,201 @@ class ServerTrustManager implements X509TrustManager {
         }
 
         InputStream in = null;
-        try {
-            trustStore = KeyStore.getInstance(configuration.getTruststoreType());
-
-            //TODO add the ability to load  custom cacerts file from SDCard
-            /*
-             *
-            if (new File(configuration.getTruststorePath()).exists())
-            	in = new FileInputStream(configuration.getTruststorePath());
-            else
-            */
-
-            //load our bundled cacerts from raw assets
-            in = context.getResources().openRawResource(R.raw.cacerts);
-
-            trustStore.load(in, configuration.getTruststorePassword().toCharArray());
-        } catch (Exception e) {
-            Log.e(TAG, e.getMessage(), e);
-            // Disable root CA checking
-            configuration.setVerifyRootCAEnabled(false);
-        } finally {
-            if (in != null) {
-                try {
-                    in.close();
-                } catch (IOException ioe) {
-                    // Ignore.
-                }
-            }
-        }
+        
+        mTrustStore = KeyStore.getInstance(configuration.getTruststoreType());
+        //load our bundled cacerts from raw assets
+        in = context.getResources().openRawResource(R.raw.cacerts);
+        mTrustStore.load(in, configuration.getTruststorePassword().toCharArray());
+        
+        mPinnedStore = KeyStore.getInstance(configuration.getTruststoreType());
+        //load our bundled cacerts from raw assets
+        in = context.getResources().openRawResource(R.raw.pinnedcacerts);
+        mPinnedStore.load(in, configuration.getTruststorePassword().toCharArray());
+       
     }
 
     public X509Certificate[] getAcceptedIssuers() {
-        return new X509Certificate[0];
+        return new X509Certificate[0]; //we accept anyone now, but this should return the list from our trust Root CA Store
     }
 
     public void checkClientTrusted(X509Certificate[] arg0, String arg1) throws CertificateException {
+        //not yet implemented
     }
 
-    public void checkServerTrusted(X509Certificate[] x509Certificates, String arg1)
+    public void checkServerTrusted(X509Certificate[] x509Certificates, String keyExchangeAlgo)
             throws CertificateException {
-
-       // android.os.Debug.waitForDebugger();
         
-        int nSize = x509Certificates.length;
+        
+        //first check the main cert
+        X509Certificate certSite = x509Certificates[0];
+        checkStrongCrypto(certSite);        
+        checkPinning(certSite);
+        if (configuration.isExpiredCertificatesCheckEnabled())
+            certSite.checkValidity();
+        
+        //then go through the chain
+        if (configuration.isVerifyChainEnabled())
+        {
+            boolean verifiedRootCA = false;
+            
+            // for every certificate in the chain,
+            // verify its issuer exists in the chain, or our local root CA store            
+            for (int i = 0; i < x509Certificates.length; i++)
+            {
+                X509Certificate x509certCurr = x509Certificates[i];
+                
+                debug(i + ": verifying cert issuer for: " + x509certCurr.getSubjectDN() + "; " + x509certCurr.getSigAlgName());
 
-        Collection<String> peerIdentities = getPeerIdentity(x509Certificates[0]);
-
-        if (configuration.isVerifyChainEnabled()) {
-            // Working down the chain, for every certificate in the chain,
-            // verify that the subject of the certificate is the issuer of the
-            // next certificate in the chain.
-            Principal principalLast = null;
-            for (int i = nSize - 1; i >= 0; i--) {
-                X509Certificate x509certificate = x509Certificates[i];
-
-                Principal principalIssuer = x509certificate.getIssuerDN();
-                Principal principalSubject = x509certificate.getSubjectDN();
-                if (principalLast != null) {
-                    if (principalIssuer.equals(principalLast)) {
-                        try {
-                            PublicKey publickey = x509Certificates[i + 1].getPublicKey();
-                            x509Certificates[i].verify(publickey);
-                        }
-
-                        catch (GeneralSecurityException generalsecurityexception) {
-                            Log.d("GB.TLS", "signature verification failed " + principalIssuer.getName());
-
-                            throw new CertificateException("signature verification failed of "
-                                                           + principalIssuer.getName());
-                        }
-                    } else {
-                        Log.d("GB.TLS", "subject/issuer verification failed " + principalIssuer.getName());
-
-                        throw new CertificateException("subject/issuer verification failed of "
-                                                       + principalIssuer.getName());
+                X509Certificate x509issuer = null;
+                boolean isRootCA = false;
+                
+                for (X509Certificate x509search : x509Certificates)
+                {                                      
+                    if(checkSubjectMatchesIssuer(x509search.getSubjectX500Principal(),x509certCurr.getIssuerX500Principal()))                 
+                    {                                                          
+                        x509issuer = x509search;           
+                        debug("found issuer for current cert in chain: " + x509issuer.getSubjectDN() + "; " + x509certCurr.getSigAlgName());
+                        
+                        //now check if it is a root
+                        X509Certificate x509root = findCertIssuerInStore(x509certCurr, mTrustStore);
+                        if (x509root != null)
+                            isRootCA = true;
+                        
+                        break;
                     }
+                }                           
+                
+                //this is now verifying against the root store
+                //did not find signing cert in chain, so check our store
+                if (x509issuer == null)
+                {
+                   x509issuer = findCertIssuerInStore(x509certCurr, mTrustStore);
+                   isRootCA = true;
                 }
-                principalLast = principalSubject;
+                
+                if (x509issuer != null) {
+                    
+                    try {
+                        //check expiry
+                        x509issuer.checkValidity();  
+                        
+                        if (!isRootCA) //MD5 collision not a risk for the Root CA in our store
+                            checkStrongCrypto(x509issuer);
+                                                
+                        //verify cert with issuer public key
+                        x509certCurr.verify(x509issuer.getPublicKey());
+                        debug("SUCCESS: verified issuer: " + x509certCurr.getIssuerDN());
+
+                        if (isRootCA)
+                            verifiedRootCA = true;
+                    }
+                    
+
+                    catch (GeneralSecurityException gse) {
+                        Log.e(TAG,"ERROR: unverified issuer: " + x509certCurr.getIssuerDN());
+
+                        throw new CertificateException("signature chain verification failed of "
+                                                       + x509issuer.getIssuerDN().getName() + ": " + gse.getMessage());
+                    }
+                } 
+                else {
+                    
+
+                    String errMsg = "Could not find cert issuer certificate in chain: " + x509certCurr.getIssuerDN().getName();
+                    
+                    Log.e(TAG,errMsg);
+                    
+                    throw new CertificateException(errMsg);
+                }
+                
+            }
+            
+            if (configuration.isVerifyRootCAEnabled() && (!verifiedRootCA))
+            {
+                String errMsg = "Could not find Root CA issuer certificate in chain";
+                
+                Log.e(TAG,errMsg);
+                
+                throw new CertificateException(errMsg);
             }
         }
-
-        if (configuration.isVerifyRootCAEnabled()) {
-            // Verify that the the last certificate in the chain was issued
-            // by a third-party that the client trusts.
-            boolean trusted = false;
-
-            try {
-
-                if (configuration.isSelfSignedCertificateEnabled()) {
+        else if (configuration.isExpiredCertificatesCheckEnabled())
+        {    
+            // at least check the validity of the chain
+            for (X509Certificate x509cert : x509Certificates)
+                x509cert.checkValidity();
+        
+        }        
+        
+        if (configuration.isSelfSignedCertificateEnabled())
+        {
+            boolean foundSelfSig = false;
                     
-                    String fingerprint = "";
-                    
-                    try 
-                    {
-                        fingerprint = getFingerprint(x509Certificates[0], FINGERPRINT_TYPE);
-                    }
-                    catch (Exception e)
-                    {
-                        fingerprint = "unable to read fingerprint";
-                    }
-                    
-                    Log.d("GB.TLS", "self-signed certificate");
-
-                    trusted = true;
-                } else {
-
-                    X509Certificate certFinal = x509Certificates[nSize - 1];
-
-                    Enumeration<String> enumAliases = trustStore.aliases();
-                    while (enumAliases.hasMoreElements()) {
-
-                        X509Certificate cert = (X509Certificate) trustStore
-                                .getCertificate(enumAliases.nextElement());
-
-                        String caSubject = cert.getSubjectDN().getName();
-                        String issuerSubject = certFinal.getIssuerDN().getName();
-
-                        Matcher matcher = oPattern.matcher(caSubject);
-                        if (matcher.find()) {
-                            caSubject = matcher.group(2);
-                        }
-
-                        matcher = oPattern.matcher(issuerSubject);
-                        if (matcher.find()) {
-                            issuerSubject = matcher.group(2);
-                        }
-
-                        if (caSubject.equals(issuerSubject)) {
-                            try {
-                                certFinal.verify(cert.getPublicKey());
-                                trusted = true;
-
-                          //      Log.d(TAG, "TLS/SSL Certificate Verified " + getFingerprint(certFinal, FINGERPRINT_TYPE));
-//                                showCertMessage("TLS/SSL Certificate Verified",
-//                                        getFingerprint(certFinal, FINGERPRINT_TYPE), certFinal);
-
-                            } catch (Exception e) {
-                                RemoteImService.debug("error on ssl verify", e);
-                                trusted = false;
-                            }
-
-                        }
-
-                        if (trusted) {
-                            break;
-                        }
-                    }
-                }
-
-            } catch (Exception e) {
-                RemoteImService.debug("error on ssl verify", e);
-                trusted = false;
-               
-            }
-
-            if (!trusted) {
+            // for every certificate in the chain,
+            // verify its issuer exists in the chain, or our local root CA store            
+            for (int i = 0; i < x509Certificates.length; i++)
+            {
+                X509Certificate x509certCurr = x509Certificates[i];
                 
-                String fingerprint = "";
+                debug(i + ": verifying cert issuer for: " + x509certCurr.getSubjectDN());
+
+                X509Certificate x509issuer = null;
                 
-                try
-                {
-                    fingerprint = getFingerprint(x509Certificates[0], FINGERPRINT_TYPE);
-                }
-                catch (Exception e)
-                {
-                    //may not even be able to get fingerprint properly
-                    fingerprint = "unable to read fingerprint";
-                }
+                for (X509Certificate x509search : x509Certificates)
+                {                  
+                    if(checkSubjectMatchesIssuer(x509search.getSubjectX500Principal(),x509certCurr.getIssuerX500Principal()))                 
+                    {                                                          
+                        x509issuer = x509search;           
+                        debug("found issuer for current cert in chain: " + x509issuer.getSubjectDN());
+                       
+                        //check expiry
+                        x509issuer.checkValidity();
+                        
+                        
+                        try {
+                            x509certCurr.verify(x509issuer.getPublicKey());
+                            foundSelfSig = true;
+                        }
+
+                        catch (GeneralSecurityException gse) {
+                            Log.e(TAG,"ERROR: unverified issuer: " + x509certCurr.getIssuerDN());
+
+                            throw new CertificateException("signature chain verification failed of "
+                                                           + x509issuer.getIssuerDN().getName() + ": " + gse.getMessage());
+                        }
+                        
+                        debug("SUCCESS: verified issuer: " + x509certCurr.getIssuerDN());
+
+                        break;
+                    }
+                }                           
+            }            
+            
+            if (!foundSelfSig)
+            {
+                String errMsg = "Could not find self-signed certificate in chain";
+                
+                Log.e(TAG,errMsg);
                 
                 Log.d("GB.TLS", "root certificate not trusted");
-                throw new CertificateException("root certificate not trusted of " + peerIdentities);
+                throw new CertificateException(errMsg);
             }
         }
 
-        if (configuration.isNotMatchingDomainCheckEnabled()) {
+        if (configuration.isNotMatchingDomainCheckEnabled())
+        {
+            //get peer identities available in the first cert in the chain
+            Collection<String> peerIdentities = getPeerIdentity(x509Certificates[0]);
+    
             // Verify that the first certificate in the chain corresponds to
             // the server we desire to authenticate.
             boolean found = checkMatchingDomain(domain, server, peerIdentities);
-
+    
             if (!found) {
                 Log.d("GB.TLS", "domain check failed " + join(peerIdentities) + " does not contain '"
                                                        + server + "' or '" + domain + "'");
 
+    
                 throw new CertificateException("target verification failed of " + peerIdentities);
             }
         }
@@ -291,7 +308,7 @@ class ServerTrustManager implements X509TrustManager {
             // For every certificate in the chain, verify that the certificate
             // is valid at the current time.
             Date date = new Date();
-            for (int i = 0; i < nSize; i++) {
+            for (int i = 0; i < x509Certificates.length; i++) {
                 try {
                     x509Certificates[i].checkValidity(date);
                 } catch (GeneralSecurityException generalsecurityexception) {
@@ -302,31 +319,28 @@ class ServerTrustManager implements X509TrustManager {
         }
 
     }
-
+   
     static boolean checkMatchingDomain(String domain, String server, Collection<String> peerIdentities) {
         boolean found = false;
+
         for (String peerIdentity : peerIdentities) {
             // Check if the certificate uses a wildcard.
             // This indicates that immediate subdomains are valid.
             if (peerIdentity.startsWith("*.")) {
                 // Remove wildcard: *.foo.info -> .foo.info
                 String stem = peerIdentity.substring(1);
-
+                
                 // Remove a single label: baz.bar.foo.info -> .bar.foo.info and compare
-                if (server.equalsIgnoreCase(stem)
-                        || domain.equalsIgnoreCase(stem)
-                        || server.replaceFirst("[^.]+", "").equalsIgnoreCase(stem)
-                    || domain.replaceFirst("[^.]+", "").equalsIgnoreCase(stem)
-        
+                if (server.replaceFirst("[^.]+", "").equalsIgnoreCase(stem)
+                    || domain.replaceFirst("[^.]+", "").equalsIgnoreCase(stem)        
                         ) {
                     found = true;
                     break;
                 }
-            } else {
-                if (server.equalsIgnoreCase(peerIdentity) || domain.equalsIgnoreCase(peerIdentity)) {
+            } else if (server.equalsIgnoreCase(peerIdentity) 
+                    || domain.equalsIgnoreCase(peerIdentity)) {
                     found = true;
-                    break;
-                }
+                    break;              
             }
         }
         return found;
@@ -343,6 +357,38 @@ class ServerTrustManager implements X509TrustManager {
             buf.append(str);
         }
         return buf.toString();
+    }
+
+    private X509Certificate findCertIssuerInStore (X509Certificate x509cert, KeyStore kStore) throws CertificateException
+    {
+        X509Certificate x509issuer = null;
+        
+        debug("searching store for issuer: " + x509cert.getIssuerDN());
+
+        //check in our local root CA Store
+        Enumeration<String> enumAliases;
+        try {
+            enumAliases = kStore.aliases();
+            X509Certificate x509search = null;
+            while (enumAliases.hasMoreElements()) {
+                x509search = (X509Certificate) kStore
+                        .getCertificate(enumAliases.nextElement());
+                
+                if(checkSubjectMatchesIssuer(x509search.getSubjectX500Principal(),x509cert.getIssuerX500Principal()))                 
+                {                            
+                    x509issuer = x509search;                    
+                   debug("found issuer for current cert in chain in ROOT CA store: " + x509issuer.getSubjectDN());
+                  
+                   break;
+               }
+            }
+        } catch (KeyStoreException e) {
+          Log.e(TAG, "problem access local ROOT CA store",e);
+
+          throw new CertificateException("problem access local ROOT CA store");
+        }
+       
+        return x509issuer;
     }
 
     /**
@@ -419,7 +465,6 @@ class ServerTrustManager implements X509TrustManager {
 
     public String getFingerprint(X509Certificate cert, String type) throws NoSuchAlgorithmException, CertificateEncodingException 
     {
-        
             MessageDigest md = MessageDigest.getInstance(type);
             byte[] publicKey = md.digest(cert.getEncoded());
 
@@ -437,5 +482,78 @@ class ServerTrustManager implements X509TrustManager {
             return hexString.toString();
 
     }
+    
+    private boolean checkSubjectMatchesIssuer (X500Principal subject, X500Principal issuer)
+    {
+        boolean result = false;
+                
+        if (Arrays.equals(subject.getEncoded(), issuer.getEncoded())) //byte by byte check
+            if (subject.getName("RFC1779").equals(issuer.getName("RFC1779"))) //name check
+                    result = true;
+        
+        return result;        
+    }
+    
+    private void debug (String msg)
+    {
+        //disable for now
+        //            Log.d(TAG, msg);
+    }
 
+    private void checkStrongCrypto (X509Certificate cert) throws CertificateException
+    {
+        String algo = cert.getSigAlgName().toLowerCase();
+        
+        if (!algo.contains("sha1") || algo.contains("sha256"))
+        {
+            debug("cert uses weak crypto: " + algo);
+
+            Log.d("GB.TLS", "Cert uses weak crypto " + algo);
+          // we will just WARN and not block for this, for now
+          //  throw new CertificateException("issuer uses weak crypto: " + algo);
+        }
+        
+    }
+    
+    private void checkPinning (X509Certificate x509cert) throws CertificateException
+    {
+        
+        X500Principal certPrincipal = x509cert.getSubjectX500Principal();
+        debug("checking pinning for: " + certPrincipal.getName("RFC1779"));
+        
+         Enumeration<String> enumAliases;
+        try {
+            enumAliases = mPinnedStore.aliases();
+            X509Certificate x509search = null;
+            while (enumAliases.hasMoreElements()) {
+                x509search = (X509Certificate) mPinnedStore
+                        .getCertificate(enumAliases.nextElement());
+                
+                X500Principal searchPrincipal = x509search.getSubjectX500Principal();
+                debug("checking pinning against: " + searchPrincipal.getName("RFC1779"));
+                
+                if (certPrincipal.getName("RFC1779").equals(searchPrincipal.getName("RFC1779"))) //name check
+                {
+                    debug("matched pinning to: " + certPrincipal.getName("RFC1779"));
+                    //found matching pinned cert, now check if the certs are the same
+                    if (!Arrays.equals(certPrincipal.getEncoded(), searchPrincipal.getEncoded())) //byte by byte check                    
+                    {
+                        
+                        Log.d("GB.TLS", "Provided Certificate Does Not Match PINNED Cert: " + certPrincipal.getName("RFC1779"));
+                        
+                        // just warn for now, don't block
+                       // throw new CertificateException(context.getString(R.string.warning_pinned_cert_mismatch) + certPrincipal.getName("RFC1779"));
+                        
+                    }
+                    
+                    break;
+                }
+            }
+        } catch (KeyStoreException e) {
+          Log.e(TAG, "problem access local keystore",e);
+          throw new CertificateException("problem access local keystore");
+        }
+
+    }
+    
 }
