@@ -1,6 +1,5 @@
 package info.guardianproject.otr.app.im.dataplug;
 
-import info.guardianproject.otr.app.im.dataplug.Discoverer.Registration;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
@@ -14,26 +13,32 @@ public class RequestActivity extends Activity {
         Log.i("GB.dataplug", "onCreate RegistrationActivity");
         
         Intent intent = getIntent();
-        String method = intent.getExtras().getString(Api.EXTRA_METHOD);
-        String uri = intent.getExtras().getString(Api.EXTRA_URI);
-        String friendId = intent.getExtras().getString(Api.EXTRA_FRIEND_ID);
-        String requestId = intent.getExtras().getString(Api.EXTRA_REQUEST_ID);
-        Log.d(Api.DATAPLUG_TAG, "Got request @" +friendId + ": " + method + " " + uri);
-        
-        Registration registration = Discoverer.getInstance(this).findRegistration(uri);
-        if (registration == null) {
-            Log.e(Api.DATAPLUG_TAG, "Could not find registration for this uri");
-            finish();
-            return;
+        if (intent.getAction() == Api.REQUEST_ACTION) {
+            String method = intent.getExtras().getString(Api.EXTRA_METHOD);
+            String uri = intent.getExtras().getString(Api.EXTRA_URI);
+            String friendId = intent.getExtras().getString(Api.EXTRA_FRIEND_ID);
+            String requestId = intent.getExtras().getString(Api.EXTRA_REQUEST_ID);
+            String content = intent.getExtras().getString(Api.EXTRA_CONTENT);
+            Log.d(Api.DATAPLUG_TAG, "Got request @" +friendId + ": " + method + " " + uri);
+
+            PluggerRequest request = new PluggerRequest();
+            request.setMethod(method);
+            request.setUri(uri);
+            request.setFriendId(friendId);
+            request.setRequestId(requestId);
+            request.setContent(content);
+            new DataPlugger(this).sendRequestToRemote(request);
+        } else if (intent.getAction() == Api.RESPONSE_FROM_LOCAL_ACTION) {
+            String friendId = intent.getExtras().getString(Api.EXTRA_FRIEND_ID);
+            String requestId = intent.getExtras().getString(Api.EXTRA_REQUEST_ID);
+            String content = intent.getExtras().getString(Api.EXTRA_CONTENT);
+
+            PluggerResponse response = new PluggerResponse();
+            response.setFriendId(friendId);
+            response.setRequestId(requestId);
+            response.setContent(content);
+            new DataPlugger(this).sendResponseToRemote(response);
         }
-        Intent responseIntent = new Intent(Api.RESPONSE_ACTION);
-        responseIntent.setComponent(registration.getComponent());
-        responseIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        responseIntent.putExtra(Api.EXTRA_REQUEST_ID, requestId);
-        responseIntent.putExtra(Api.EXTRA_FRIEND_ID, friendId);
-        responseIntent.putExtra(Api.EXTRA_CONTENT, 
-                "{\"albums\": [\"New Year's 2013\", \"Kitties\"]}");
-        startActivity(responseIntent);
         finish();
     }
 }

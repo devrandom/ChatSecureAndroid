@@ -431,6 +431,10 @@
                 <action android:name="info.guardianproject.otr.app.im.dataplug.REQUEST" />
                 <category android:name="android.intent.category.DEFAULT" />
              </intent-filter>
+             <intent-filter>
+                <action android:name="info.guardianproject.otr.app.im.dataplug.RESPONSE_FROM_LOCAL" />
+                <category android:name="android.intent.category.DEFAULT" />
+             </intent-filter>
          </activity>
     </application>
 

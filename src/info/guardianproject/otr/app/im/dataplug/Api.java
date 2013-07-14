@@ -3,7 +3,14 @@ package info.guardianproject.otr.app.im.dataplug;
 public class Api {
     public static final String DISCOVER_ACTION = "info.guardianproject.otr.app.im.dataplug.DISCOVER";
     public static final String ACTIVATE_ACTION = "info.guardianproject.otr.app.im.dataplug.ACTIVATE";
+    /** Request from plugin to remote*/
+    public static final String REQUEST_ACTION = "info.guardianproject.otr.app.im.dataplug.REQUEST";
+    /** Response from remote to plugin */
     public static final String RESPONSE_ACTION = "info.guardianproject.otr.app.im.dataplug.RESPONSE";
+    /** Request from remote to plugin */
+    public static final String REQUEST_TO_LOCAL_ACTION = "info.guardianproject.otr.app.im.dataplug.REQUEST_TO_LOCAL";
+    /** Response from plugin to remote */
+    public static final String RESPONSE_FROM_LOCAL_ACTION = "info.guardianproject.otr.app.im.dataplug.RESPONSE_FROM_LOCAL";
 
 
     public static final String DATAPLUG_TAG = "GB.dataplug";
