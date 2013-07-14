@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Copyright (C) 2011 The Android Open Source Project
+<!--
+     Copyright (C) 2011 The Android Open Source Project
 
      Licensed under the Apache License, Version 2.0 (the "License");
      you may not use this file except in compliance with the License.
@@ -15,14 +16,16 @@
 -->
 
 <resources>
+
     <dimen name="frag_rounding_radius">20dp</dimen>
     <dimen name="progress_action_padding">8dp</dimen>
-    
     <dimen name="padding_small">8dp</dimen>
     <dimen name="padding_medium">8dp</dimen>
     <dimen name="padding_large">16dp</dimen>
     <dimen name="padding_xlarge">32dp</dimen>
     <dimen name="slidingmenu_offset">20dp</dimen>
-    <dimen name="shadow_width">15dp</dimen>    
+    <dimen name="shadow_width">15dp</dimen>
+    <dimen name="activity_horizontal_margin">16dp</dimen>
+    <dimen name="activity_vertical_margin">16dp</dimen>
 
 </resources>

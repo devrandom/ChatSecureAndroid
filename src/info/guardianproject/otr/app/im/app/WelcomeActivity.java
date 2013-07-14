@@ -21,20 +21,15 @@ import info.guardianproject.cacheword.ICacheWordSubscriber;
 import info.guardianproject.cacheword.SQLCipherOpenHelper;
 import info.guardianproject.otr.OtrAndroidKeyManagerImpl;
 import info.guardianproject.otr.app.im.R;
+import info.guardianproject.otr.app.im.dataplug.Discoverer;
 import info.guardianproject.otr.app.im.engine.ImConnection;
 import info.guardianproject.otr.app.im.provider.Imps;
 import info.guardianproject.otr.app.im.service.ImServiceConstants;
 import info.guardianproject.otr.app.im.ui.AboutActivity;
-
-import java.io.File;
-import java.io.IOException;
-
 import net.sqlcipher.database.SQLiteDatabase;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.Dialog;
 import android.content.ContentUris;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -42,7 +37,6 @@ import android.content.res.Configuration;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Message;
 import android.preference.PreferenceManager;
 import android.util.Log;
@@ -54,8 +48,6 @@ import android.widget.Toast;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuInflater;
 import com.actionbarsherlock.view.MenuItem;
-import com.google.zxing.integration.android.IntentIntegrator;
-import com.google.zxing.integration.android.IntentResult;
 
 public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubscriber  {
     
@@ -110,7 +102,6 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
         
       
         mDoSignIn = getIntent().getBooleanExtra("doSignIn", true);
-     
     }
     
     private void connectToCacheWord ()
@@ -201,6 +192,9 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
     protected void onResume() {
         super.onResume();
 
+        // DATAPLUG
+        Discoverer.getInstance(this).discoverDataPlugs();
+
         if (mCacheWord == null)
             connectToCacheWord ();
        
@@ -231,6 +225,7 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
         {
             showLockScreen();
         }
+        
     }
 
     private void doOnResume() {
