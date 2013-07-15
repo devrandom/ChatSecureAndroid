@@ -2,6 +2,7 @@ package info.guardianproject.otr.app.im.dataplug;
 
 public class Api {
     public static final String DISCOVER_ACTION = "info.guardianproject.otr.app.im.dataplug.DISCOVER";
+    public static final String REGISTER_ACTION = "info.guardianproject.otr.app.im.dataplug.REGISTER";
     public static final String ACTIVATE_ACTION = "info.guardianproject.otr.app.im.dataplug.ACTIVATE";
     /** Request from plugin to remote*/
     public static final String REQUEST_ACTION = "info.guardianproject.otr.app.im.dataplug.REQUEST";

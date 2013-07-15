@@ -30,6 +30,11 @@ import info.guardianproject.otr.app.im.app.ImApp;
 import info.guardianproject.otr.app.im.app.ImPluginHelper;
 import info.guardianproject.otr.app.im.app.NetworkConnectivityListener;
 import info.guardianproject.otr.app.im.app.NetworkConnectivityListener.State;
+import info.guardianproject.otr.app.im.dataplug.Api;
+import info.guardianproject.otr.app.im.dataplug.DataPlugger;
+import info.guardianproject.otr.app.im.dataplug.Discoverer;
+import info.guardianproject.otr.app.im.dataplug.PluggerRequest;
+import info.guardianproject.otr.app.im.dataplug.PluggerResponse;
 import info.guardianproject.otr.app.im.engine.ConnectionFactory;
 import info.guardianproject.otr.app.im.engine.HeartbeatService.Callback;
 import info.guardianproject.otr.app.im.engine.ImConnection;
@@ -98,6 +103,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
     final RemoteCallbackList<IConnectionCreationListener> mRemoteListeners = new RemoteCallbackList<IConnectionCreationListener>();
     private ForegroundStarter mForegroundStarter;
     public long mHeartbeatInterval;
+    private DataPlugger mDataPlugger;
 
     private static final String TAG = "Gibberbot.ImService";
 
@@ -239,8 +245,52 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        
-        return super.onStartCommand(intent, flags, startId);
+        if (mDataPlugger == null) {
+            mDataPlugger = new DataPlugger(this, (ImApp)getApplication());
+        }
+        if (intent.getAction().equals(Api.REGISTER_ACTION)) {
+            String token = intent.getExtras().getString(Api.EXTRA_TOKEN);
+            String meta = intent.getExtras().getString(Api.REGISTRATION_TOKEN);
+            Discoverer.getInstance(this).register(token, meta);
+
+            // FIXME is this the right value?
+            return 0;
+        } else if (intent.getAction() == Api.REQUEST_ACTION) {
+            String method = intent.getExtras().getString(Api.EXTRA_METHOD);
+            String uri = intent.getExtras().getString(Api.EXTRA_URI);
+            String friendId = intent.getExtras().getString(Api.EXTRA_FRIEND_ID);
+            String accountId = intent.getExtras().getString(Api.EXTRA_ACCOUNT_ID);
+            String requestId = intent.getExtras().getString(Api.EXTRA_REQUEST_ID);
+            String content = intent.getExtras().getString(Api.EXTRA_CONTENT);
+            Log.d(Api.DATAPLUG_TAG, "Got request @" +friendId + ": " + method + " " + uri);
+
+            PluggerRequest request = new PluggerRequest();
+            request.setMethod(method);
+            request.setUri(uri);
+            request.setFriendId(friendId);
+            request.setRequestId(requestId);
+            request.setContent(content.getBytes());
+            request.setAccountId(accountId);
+            mDataPlugger.sendRequestToRemote(request);
+            return 0;
+        } else if (intent.getAction() == Api.RESPONSE_FROM_LOCAL_ACTION) {
+            String friendId = intent.getExtras().getString(Api.EXTRA_FRIEND_ID);
+            String accountId = intent.getExtras().getString(Api.EXTRA_ACCOUNT_ID);
+            String requestId = intent.getExtras().getString(Api.EXTRA_REQUEST_ID);
+            String content = intent.getExtras().getString(Api.EXTRA_CONTENT);
+
+            PluggerResponse response = new PluggerResponse();
+            response.setCode(200);
+            response.setStatusString("OK");
+            response.setFriendId(friendId);
+            response.setRequestId(requestId);
+            response.setContent(content.getBytes());
+            response.setAccountId(accountId);
+            mDataPlugger.sendResponseToRemote(response);
+            return 0;
+        } else {
+            return super.onStartCommand(intent, flags, startId);
+        }
     }
     
     

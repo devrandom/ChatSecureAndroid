@@ -165,6 +165,18 @@
                 <action android:name="info.guardianproject.otr.app.im.IRemoteImService" />
                 <action android:name="info.guardianproject.otr.app.im.SERVICE" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="info.guardianproject.otr.app.im.dataplug.REGISTER" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="info.guardianproject.otr.app.im.dataplug.REQUEST" />
+                <category android:name="android.intent.category.DEFAULT" />
+             </intent-filter>
+             <intent-filter>
+                <action android:name="info.guardianproject.otr.app.im.dataplug.RESPONSE_FROM_LOCAL" />
+                <category android:name="android.intent.category.DEFAULT" />
+             </intent-filter>
         </service>
 
         <provider
@@ -412,30 +424,6 @@
             android:exported="false" />
 
         <activity android:name="net.hockeyapp.android.UpdateActivity" />
-        <activity
-            android:name="info.guardianproject.otr.app.im.dataplug.RegistrationActivity"
-            android:label="@string/title_activity_registration"
-            android:exported="true"
-            android:configChanges="keyboardHidden|orientation|screenSize" >
-             <intent-filter>
-                <action android:name="info.guardianproject.otr.app.im.dataplug.REGISTER" />
-                <category android:name="android.intent.category.DEFAULT" />
-             </intent-filter>
-         </activity>
-        <activity
-            android:name="info.guardianproject.otr.app.im.dataplug.RequestActivity"
-            android:label="@string/title_activity_registration"
-            android:exported="true"
-            android:configChanges="keyboardHidden|orientation|screenSize" >
-             <intent-filter>
-                <action android:name="info.guardianproject.otr.app.im.dataplug.REQUEST" />
-                <category android:name="android.intent.category.DEFAULT" />
-             </intent-filter>
-             <intent-filter>
-                <action android:name="info.guardianproject.otr.app.im.dataplug.RESPONSE_FROM_LOCAL" />
-                <category android:name="android.intent.category.DEFAULT" />
-             </intent-filter>
-         </activity>
     </application>
 
 </manifest>
