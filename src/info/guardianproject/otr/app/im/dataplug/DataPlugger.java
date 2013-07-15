@@ -42,6 +42,7 @@ public class DataPlugger {
         responseIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         responseIntent.putExtra(Api.EXTRA_REQUEST_ID, response.getRequestId());
         responseIntent.putExtra(Api.EXTRA_FRIEND_ID, response.getFriendId());
+        responseIntent.putExtra(Api.EXTRA_HEADERS, response.getHeaders());
         responseIntent.putExtra(Api.EXTRA_CONTENT, response.getContent());
         mContext.startActivity(responseIntent);
         return true;
@@ -51,7 +52,7 @@ public class DataPlugger {
         IChatSession chatSession = getChatSession(request.getAccountId(), request.getFriendId());
         try {
             chatSession.sendDataRequest(request.getMethod(), request.getUri(),
-                    request.getRequestId(), request.getContent());
+                    request.getRequestId(), request.getHeaders(), request.getContent());
         } catch (RemoteException e) {
             Log.e(Api.DATAPLUG_TAG, "Could not send request");
             return false;
@@ -73,6 +74,7 @@ public class DataPlugger {
         requestIntent.putExtra(Api.EXTRA_URI, request.getUri());
         requestIntent.putExtra(Api.EXTRA_FRIEND_ID, request.getFriendId());
         requestIntent.putExtra(Api.EXTRA_REQUEST_ID, request.getRequestId());
+        requestIntent.putExtra(Api.EXTRA_HEADERS, request.getHeaders());
         requestIntent.putExtra(Api.EXTRA_CONTENT, request.getContent());
         mContext.startActivity(requestIntent);
         return true;

@@ -20,7 +20,7 @@ public interface DataHandler {
     void offerData(Address us, String localUri, Map<String, String> headers);
 
     void sendDataRequest(Address address, String method, String uri, String requestId,
-            byte[] content);
+            String headersString, byte[] content);
 
     void sendDataResponse(Address address, int code, String statusString, String requestId, byte[] content);
 }

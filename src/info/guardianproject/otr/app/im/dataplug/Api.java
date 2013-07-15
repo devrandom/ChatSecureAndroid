@@ -21,5 +21,6 @@ public class Api {
     public static final String EXTRA_CONTENT = "Content";
     public static final String REGISTRATION_TOKEN = "Registration";
     public static final String EXTRA_METHOD = "Method";
+    public static final String EXTRA_HEADERS = "Headers";
     public static final String EXTRA_URI = "Uri";
 }

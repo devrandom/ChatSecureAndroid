@@ -92,7 +92,7 @@ interface IChatSession {
     /**
      * Sends data request to peer
      */
-    void sendDataRequest(String method, String uri, String requestId, in byte[] content);
+    void sendDataRequest(String method, String uri, String requestId, String headers, in byte[] content);
 
     /**
      * Sends data request to peer

@@ -835,14 +835,14 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
     }
 
     @Override
-    public void sendDataRequest(String method, String uri, String requestId, byte[] content)
+    public void sendDataRequest(String method, String uri, String requestId, String headers, byte[] content)
             throws RemoteException {
         if (mConnection.getState() == ImConnection.SUSPENDED) {
             // TODO send later
             return;
         }
 
-        mDataHandler.sendDataRequest(mConnection.getLoginUser().getAddress(), method, uri, requestId, content);
+        mDataHandler.sendDataRequest(mConnection.getLoginUser().getAddress(), method, uri, requestId, headers, content);
     }
 
     @Override

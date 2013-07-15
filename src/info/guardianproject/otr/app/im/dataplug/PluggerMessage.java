@@ -6,6 +6,7 @@ public class PluggerMessage {
     private String friendId;
     private String requestId;
     private byte[] content;
+    private String headers;
  
     public String getUri() {
         return uri;
@@ -36,5 +37,11 @@ public class PluggerMessage {
     }
     public void setContent(byte[] content) {
         this.content = content;
+    }
+    public String getHeaders() {
+        return headers;
+    }
+    public void setHeaders(String headers) {
+        this.headers = headers;
     }
 }

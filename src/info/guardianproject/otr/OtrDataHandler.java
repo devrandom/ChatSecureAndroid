@@ -535,11 +535,22 @@ public class OtrDataHandler implements DataHandler {
 
     @Override
     public void sendDataRequest(Address us, String method, String uri, String requestId,
-            byte[] content) {
-        Map<String, String> headers;
-        headers = Maps.newHashMap();
+            String headersString, byte[] content) {
+        Map<String, String> headers = Maps.newHashMap();
+        naiveHeadersParse(headersString, headers);
         headers.put("Request-Id", requestId);
         sendRequest(us, "OFFER", uri, requestId, headers, content, new Request("OFFER", uri));
+    }
+
+    private void naiveHeadersParse(String headersString, Map<String, String> headers) {
+        for (String line: headersString.split("\n")) {
+            try {
+                String[] nameValue = line.split("=", 2);
+                headers.put(nameValue[0], nameValue[1]);
+            } catch (ArrayIndexOutOfBoundsException e) {
+                // ignore
+            }
+        }
     }
 
     @Override
