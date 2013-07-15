@@ -261,6 +261,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
             String friendId = intent.getExtras().getString(Api.EXTRA_FRIEND_ID);
             String accountId = intent.getExtras().getString(Api.EXTRA_ACCOUNT_ID);
             String requestId = intent.getExtras().getString(Api.EXTRA_REQUEST_ID);
+            String headers = intent.getExtras().getString(Api.EXTRA_HEADERS);
             String content = intent.getExtras().getString(Api.EXTRA_CONTENT);
             Log.d(Api.DATAPLUG_TAG, "Got request @" +friendId + ": " + method + " " + uri);
 
@@ -271,12 +272,14 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
             request.setRequestId(requestId);
             request.setContent(content.getBytes());
             request.setAccountId(accountId);
+            request.setHeaders(headers);
             mDataPlugger.sendRequestToRemote(request);
             return 0;
         } else if (intent.getAction() == Api.RESPONSE_FROM_LOCAL_ACTION) {
             String friendId = intent.getExtras().getString(Api.EXTRA_FRIEND_ID);
             String accountId = intent.getExtras().getString(Api.EXTRA_ACCOUNT_ID);
             String requestId = intent.getExtras().getString(Api.EXTRA_REQUEST_ID);
+            String headers = intent.getExtras().getString(Api.EXTRA_HEADERS);
             String content = intent.getExtras().getString(Api.EXTRA_CONTENT);
 
             PluggerResponse response = new PluggerResponse();
@@ -286,6 +289,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
             response.setRequestId(requestId);
             response.setContent(content.getBytes());
             response.setAccountId(accountId);
+            request.setHeaders(headers);
             mDataPlugger.sendResponseToRemote(response);
             return 0;
         } else {
