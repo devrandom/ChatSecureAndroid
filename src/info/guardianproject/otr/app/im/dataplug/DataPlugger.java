@@ -3,7 +3,7 @@ package info.guardianproject.otr.app.im.dataplug;
 import info.guardianproject.otr.app.im.IChatSession;
 import info.guardianproject.otr.app.im.IChatSessionManager;
 import info.guardianproject.otr.app.im.IImConnection;
-import info.guardianproject.otr.app.im.app.ImApp;
+import info.guardianproject.otr.app.im.ImService;
 import info.guardianproject.otr.app.im.dataplug.Discoverer.Registration;
 import android.content.Context;
 import android.content.Intent;
@@ -12,11 +12,11 @@ import android.util.Log;
 
 public class DataPlugger {
     private Context mContext;
-    private ImApp mApp;
+    private ImService mService;
 
-    public DataPlugger(Context context, ImApp app) {
+    public DataPlugger(ImService service, Context context) {
         this.mContext = context;
-        this.mApp = app;
+        this.mService = service;
     }
 
     public boolean sendResponseToRemote(PluggerResponse response) {
@@ -92,7 +92,7 @@ public class DataPlugger {
     }
 
     private IChatSessionManager getChatSessionManager(long providerId) {
-        IImConnection conn = mApp.getConnection(providerId);
+        IImConnection conn = mService.getConnectionForProvider(providerId);
 
         IChatSessionManager chatSessionManager = null;
         if (conn != null) {

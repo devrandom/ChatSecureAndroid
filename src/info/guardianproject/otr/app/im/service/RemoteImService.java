@@ -687,4 +687,14 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
         //showToast(msg, Toast.LENGTH_SHORT);
 
     }
+
+    @Override
+    public IImConnection getConnectionForProvider(long provider) {
+        for (ImConnectionAdapter conn : mConnections) {
+            if (conn.getProviderId() == provider) {
+                return conn;
+            }
+        }
+        return null;
+    }
 }
