@@ -666,7 +666,7 @@ public class ImApp extends Application {
         return conn;
     }
 
-    IImConnection getConnection(long providerId) {
+    public IImConnection getConnection(long providerId) {
         synchronized (mConnections) {
             
             

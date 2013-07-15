@@ -833,4 +833,25 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
             mContactStatusMap.remove(contact.getName());
         }
     }
+
+    @Override
+    public void sendDataRequest(String method, String uri, String requestId, byte[] content)
+            throws RemoteException {
+        if (mConnection.getState() == ImConnection.SUSPENDED) {
+            // TODO send later
+            return;
+        }
+
+        mDataHandler.sendDataRequest(mConnection.getLoginUser().getAddress(), method, uri, requestId, content);
+    }
+
+    @Override
+    public void sendDataResponse(int code, String statusString, String requestId, byte[] content) throws RemoteException {
+        if (mConnection.getState() == ImConnection.SUSPENDED) {
+            // TODO send later
+            return;
+        }
+
+        mDataHandler.sendDataResponse(mConnection.getLoginUser().getAddress(), code, statusString, requestId, content);
+    }
 }

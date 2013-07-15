@@ -85,9 +85,19 @@ interface IChatSession {
     void sendMessage(String text);
 
     /**
-     * Sends data to all participants in this ChatSession.
+     * Sends data offer to peer
      */
     void offerData(String localUri);
+
+    /**
+     * Sends data request to peer
+     */
+    void sendDataRequest(String method, String uri, String requestId, in byte[] content);
+
+    /**
+     * Sends data request to peer
+     */
+    void sendDataResponse(int code, String statusString, String requestId, in byte[] content);
 
     /**
      * Mark this chat session as read.

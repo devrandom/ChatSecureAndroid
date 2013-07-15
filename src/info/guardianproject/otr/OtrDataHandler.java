@@ -177,6 +177,7 @@ public class OtrDataHandler implements DataHandler {
                 if (!req.containsHeader("Range"))
                 {
                     sendResponse(us, 400, "Range must start with bytes=", uid, EMPTY_BODY);
+                    is.close();
                     return;
                 }
                 String rangeHeader = req.getFirstHeader("Range").getValue();
@@ -184,12 +185,14 @@ public class OtrDataHandler implements DataHandler {
                 if (spec.length != 2 || !spec[0].equals("bytes"))
                 {
                     sendResponse(us, 400, "Range must start with bytes=", uid, EMPTY_BODY);
+                    is.close();
                     return;
                 }
                 String[] startEnd = spec[1].split("-");
                 if (startEnd.length != 2)
                 {
                     sendResponse(us, 400, "Range must be START-END", uid, EMPTY_BODY);
+                    is.close();
                     return;
                 }
 
@@ -197,6 +200,7 @@ public class OtrDataHandler implements DataHandler {
                 int end = Integer.parseInt(startEnd[1]);
                 if (end - start + 1 > MAX_CHUNK_LENGTH) {
                     sendResponse(us, 400, "Range must be at most " + MAX_CHUNK_LENGTH, uid, EMPTY_BODY);
+                    is.close();
                     return;
                 }
                 readIntoByteBuffer(byteBuffer, is, start, end);
@@ -366,7 +370,7 @@ public class OtrDataHandler implements DataHandler {
         headers.put("File-Hash-SHA1", sha1sum(byteBuffer.toByteArray()));
         String[] paths = localUri.split("/");
         String url = "otr-in-band:/storage/" + SystemServices.sanitize(paths[paths.length - 1]);
-        sendRequest(us, "OFFER", url, headers, EMPTY_BODY, new Request("OFFER", url));
+        sendRequest(us, "OFFER", url, null, headers, EMPTY_BODY, new Request("OFFER", url));
     }
 
     public Request performGetData(Address us, String url, Map<String, String> headers, int start, int end) {
@@ -375,7 +379,7 @@ public class OtrDataHandler implements DataHandler {
         headers.put("Range", rangeSpec);
         Request requestMemo = new Request("GET", url, start, end);
 
-        sendRequest(us, "GET", url, headers, EMPTY_BODY, requestMemo);
+        sendRequest(us, "GET", url, null, headers, EMPTY_BODY, requestMemo);
         return requestMemo;
     }
 
@@ -476,11 +480,12 @@ public class OtrDataHandler implements DataHandler {
     Cache<String, Request> requestCache = CacheBuilder.newBuilder().maximumSize(100).build();
     Cache<String, Transfer> transferCache = CacheBuilder.newBuilder().maximumSize(100).build();
     
-    private void sendRequest(Address us, String method, String url, Map<String, String> headers, byte[] body, Request requestMemo) {
+    private void sendRequest(Address us, String method, String url, String uid, Map<String, String> headers, byte[] body, Request requestMemo) {
         MemorySessionOutputBuffer outBuf = new MemorySessionOutputBuffer();
         HttpMessageWriter writer = new HttpRequestWriter(outBuf, lineFormatter, params);
         HttpMessage req = new BasicHttpRequest(method, url, PROTOCOL_VERSION);
-        String uid = UUID.randomUUID().toString();
+        if (uid == null)
+            uid = UUID.randomUUID().toString();
         req.addHeader("Request-Id", uid);
         if (headers != null) {
             for (Entry<String, String> entry : headers.entrySet()) {
@@ -526,6 +531,23 @@ public class OtrDataHandler implements DataHandler {
         for(byte b : sha1sum)
             display += toHex(b);
         return display;
+    }
+
+    @Override
+    public void sendDataRequest(Address us, String method, String uri, String requestId,
+            byte[] content) {
+        Map<String, String> headers;
+        headers = Maps.newHashMap();
+        headers.put("Request-Id", requestId);
+        sendRequest(us, "OFFER", uri, requestId, headers, content, new Request("OFFER", uri));
+    }
+
+    @Override
+    public void sendDataResponse(Address us, int code, String statusString, String requestId, byte[] content) {
+        Map<String, String> headers;
+        headers = Maps.newHashMap();
+        headers.put("Request-Id", requestId);
+        sendResponse(us, code, statusString, requestId, content);
     }
 
 }
