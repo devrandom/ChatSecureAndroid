@@ -289,7 +289,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
             response.setRequestId(requestId);
             response.setContent(content.getBytes());
             response.setAccountId(accountId);
-            request.setHeaders(headers);
+            response.setHeaders(headers);
             mDataPlugger.sendResponseToRemote(response);
             return 0;
         } else {
