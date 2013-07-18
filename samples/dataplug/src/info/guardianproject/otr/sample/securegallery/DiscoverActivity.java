@@ -155,6 +155,7 @@ public class DiscoverActivity extends Activity {
 	
 	private void launch(String aFriendId, String aContent) {
 		// TODO your code here !!!
+		Toast.makeText(this, "Launch !!!" + aFriendId, Toast.LENGTH_LONG).show();
 	}
 
 	@Override

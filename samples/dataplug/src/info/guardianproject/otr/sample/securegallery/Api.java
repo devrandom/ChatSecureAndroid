@@ -15,7 +15,6 @@
  */
 package info.guardianproject.otr.sample.securegallery;
 
-import android.app.Activity;
 
 /**
  * @author liorsaar
