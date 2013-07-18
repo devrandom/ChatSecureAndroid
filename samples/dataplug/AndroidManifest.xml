@@ -7,7 +7,7 @@
     <uses-sdk
         android:minSdkVersion="8"
         android:targetSdkVersion="17" />
-
+    <uses-permission android:name="info.guardianproject.otr.app.im.permission.IM_SERVICE" />
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
@@ -24,7 +24,7 @@
         </activity>
         
         <!-- DISCOVER -->
-        <activity android:name="com.freelives.app.prattle.DiscoverActivity" >
+        <activity android:name=".DiscoverActivity" >
             <intent-filter>
                 <action android:name="info.guardianproject.otr.app.im.dataplug.DISCOVER" />
                 <action android:name="info.guardianproject.otr.app.im.dataplug.ACTIVATE" />

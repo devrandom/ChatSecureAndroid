@@ -59,6 +59,7 @@ import android.content.ContentResolver;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.NetworkInfo;
+import android.os.Debug;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
@@ -245,56 +246,58 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Debug.waitForDebugger();
         if (mDataPlugger == null) {
             mDataPlugger = new DataPlugger(this, (ImApp)getApplication());
         }
-        if (intent.getAction().equals(Api.REGISTER_ACTION)) {
-            String token = intent.getExtras().getString(Api.EXTRA_TOKEN);
-            String meta = intent.getExtras().getString(Api.REGISTRATION_TOKEN);
-            Discoverer.getInstance(this).register(token, meta);
+        if (intent.getAction() != null) {
+            if (intent.getAction().equals(Api.REGISTER_ACTION)) {
+                String token = intent.getExtras().getString(Api.EXTRA_TOKEN);
+                String meta = intent.getExtras().getString(Api.REGISTRATION_TOKEN);
+                Discoverer.getInstance(this).register(token, meta);
 
-            // FIXME is this the right value?
-            return 0;
-        } else if (intent.getAction() == Api.REQUEST_ACTION) {
-            String method = intent.getExtras().getString(Api.EXTRA_METHOD);
-            String uri = intent.getExtras().getString(Api.EXTRA_URI);
-            String friendId = intent.getExtras().getString(Api.EXTRA_FRIEND_ID);
-            String accountId = intent.getExtras().getString(Api.EXTRA_ACCOUNT_ID);
-            String requestId = intent.getExtras().getString(Api.EXTRA_REQUEST_ID);
-            String headers = intent.getExtras().getString(Api.EXTRA_HEADERS);
-            String content = intent.getExtras().getString(Api.EXTRA_CONTENT);
-            Log.d(Api.DATAPLUG_TAG, "Got request @" +friendId + ": " + method + " " + uri);
+                // FIXME is this the right value?
+                return 0;
+            } else if (intent.getAction() == Api.REQUEST_ACTION) {
+                String method = intent.getExtras().getString(Api.EXTRA_METHOD);
+                String uri = intent.getExtras().getString(Api.EXTRA_URI);
+                String friendId = intent.getExtras().getString(Api.EXTRA_FRIEND_ID);
+                String accountId = intent.getExtras().getString(Api.EXTRA_ACCOUNT_ID);
+                String requestId = intent.getExtras().getString(Api.EXTRA_REQUEST_ID);
+                String headers = intent.getExtras().getString(Api.EXTRA_HEADERS);
+                String content = intent.getExtras().getString(Api.EXTRA_CONTENT);
+                Log.d(Api.DATAPLUG_TAG, "Got request @" +friendId + ": " + method + " " + uri);
 
-            PluggerRequest request = new PluggerRequest();
-            request.setMethod(method);
-            request.setUri(uri);
-            request.setFriendId(friendId);
-            request.setRequestId(requestId);
-            request.setContent(content.getBytes());
-            request.setAccountId(accountId);
-            request.setHeaders(headers);
-            mDataPlugger.sendRequestToRemote(request);
-            return 0;
-        } else if (intent.getAction() == Api.RESPONSE_FROM_LOCAL_ACTION) {
-            String friendId = intent.getExtras().getString(Api.EXTRA_FRIEND_ID);
-            String accountId = intent.getExtras().getString(Api.EXTRA_ACCOUNT_ID);
-            String requestId = intent.getExtras().getString(Api.EXTRA_REQUEST_ID);
-            String headers = intent.getExtras().getString(Api.EXTRA_HEADERS);
-            String content = intent.getExtras().getString(Api.EXTRA_CONTENT);
+                PluggerRequest request = new PluggerRequest();
+                request.setMethod(method);
+                request.setUri(uri);
+                request.setFriendId(friendId);
+                request.setRequestId(requestId);
+                request.setContent(content.getBytes());
+                request.setAccountId(accountId);
+                request.setHeaders(headers);
+                mDataPlugger.sendRequestToRemote(request);
+                return 0;
+            } else if (intent.getAction() == Api.RESPONSE_FROM_LOCAL_ACTION) {
+                String friendId = intent.getExtras().getString(Api.EXTRA_FRIEND_ID);
+                String accountId = intent.getExtras().getString(Api.EXTRA_ACCOUNT_ID);
+                String requestId = intent.getExtras().getString(Api.EXTRA_REQUEST_ID);
+                String headers = intent.getExtras().getString(Api.EXTRA_HEADERS);
+                String content = intent.getExtras().getString(Api.EXTRA_CONTENT);
 
-            PluggerResponse response = new PluggerResponse();
-            response.setCode(200);
-            response.setStatusString("OK");
-            response.setFriendId(friendId);
-            response.setRequestId(requestId);
-            response.setContent(content.getBytes());
-            response.setAccountId(accountId);
-            response.setHeaders(headers);
-            mDataPlugger.sendResponseToRemote(response);
-            return 0;
-        } else {
-            return super.onStartCommand(intent, flags, startId);
+                PluggerResponse response = new PluggerResponse();
+                response.setCode(200);
+                response.setStatusString("OK");
+                response.setFriendId(friendId);
+                response.setRequestId(requestId);
+                response.setContent(content.getBytes());
+                response.setAccountId(accountId);
+                response.setHeaders(headers);
+                mDataPlugger.sendResponseToRemote(response);
+                return 0;
+            }
         }
+        return super.onStartCommand(intent, flags, startId);
     }
     
     
