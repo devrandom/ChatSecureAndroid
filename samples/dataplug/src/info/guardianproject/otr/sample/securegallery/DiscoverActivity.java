@@ -100,7 +100,7 @@ public class DiscoverActivity extends Activity {
 			sendRegistration( token ) ;
 			return ;
 		} else {
-			Toast.makeText(this, "Discover: NO TOKE", Toast.LENGTH_LONG).show();
+			Toast.makeText(this, "Discover: NO TOKEN", Toast.LENGTH_LONG).show();
 			token = "Discover: No value for 'token'";
 		}
 	}
@@ -108,10 +108,9 @@ public class DiscoverActivity extends Activity {
 	private void sendRegistration(String token) throws JSONException {
 		Intent zIntent = new Intent();
 		zIntent.setAction(Api.ACTION_REGISTER) ;
-		zIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 		zIntent.putExtra( Api.EXTRA_TOKEN , token ) ;
 		zIntent.putExtra( Api.EXTRA_REGISTRATION, getRegistration() ) ;
-		startActivity( zIntent ) ;
+		startService( zIntent ) ;
 	}
 
 	private static final String REGISTRATION = "{ 'descriptor': 	{ 'uri': 'chatsecure:/gallery', 'name': 'Gallery' }, 'meta': { 'publish' : true } }" ;
@@ -133,12 +132,11 @@ public class DiscoverActivity extends Activity {
 	private void sendRequest(String aFriendId, String aRequestId) {
 		Intent zIntent = new Intent();
 		zIntent.setAction(Api.ACTION_REQUEST) ;
-		zIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 		zIntent.putExtra( Api.EXTRA_METHOD , "GET" ) ;
 		zIntent.putExtra( Api.EXTRA_URI , "chatsecure:/gallery/activate" ) ;
 		zIntent.putExtra( Api.EXTRA_FRIEND_ID , aFriendId ) ;
 		zIntent.putExtra( Api.EXTRA_REQUEST_ID , aRequestId ) ;
-		startActivity( zIntent ) ;
+		startService( zIntent ) ;
 	}
 	
 	private void doResponse(Intent aIntent) throws IOException{
@@ -181,8 +179,7 @@ public class DiscoverActivity extends Activity {
 		try {
 			json.put( "uri", aUri );
 		} catch (JSONException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			throw new RuntimeException(e);
 		}
 		return json.toString();
 	}
@@ -194,10 +191,9 @@ public class DiscoverActivity extends Activity {
 	private void sendResponseFromLocal(String aRequest, String aContent) {
 		Intent zIntent = new Intent();
 		zIntent.setAction(Api.ACTION_RESPONSE_FROM_LOCAL) ;
-		zIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 		zIntent.putExtra( Api.EXTRA_REQUEST , aRequest ) ;
 		zIntent.putExtra( Api.EXTRA_CONTENT, aContent ) ;
-		startActivity( zIntent ) ;
+		startService( zIntent ) ;
 		finish() ;
 	}
 	
