@@ -21,6 +21,10 @@ public class DataPlugger {
 
     public boolean sendResponseToRemote(PluggerResponse response) {
         IChatSession chatSession = getChatSession(response.getAccountId(), response.getFriendId());
+        if (chatSession == null) {
+            Log.e(Api.DATAPLUG_TAG, "Could not find chat session for " + response.getAccountId() + " " + response.getFriendId());
+            return false;
+        }
         try {
             chatSession.sendDataResponse(response.getCode(), response.getStatusString(), response.getRequestId(), response.getContent());
         } catch (RemoteException e) {
@@ -50,6 +54,10 @@ public class DataPlugger {
 
     public boolean sendRequestToRemote(PluggerRequest request) {
         IChatSession chatSession = getChatSession(request.getAccountId(), request.getFriendId());
+        if (chatSession == null) {
+            Log.e(Api.DATAPLUG_TAG, "Could not find chat session for " + request.getAccountId() + " " + request.getFriendId());
+            return false;
+        }
         try {
             chatSession.sendDataRequest(request.getMethod(), request.getUri(),
                     request.getRequestId(), request.getHeaders(), request.getContent());

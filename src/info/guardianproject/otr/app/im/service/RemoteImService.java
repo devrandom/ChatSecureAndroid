@@ -267,13 +267,19 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
                 String headers = intent.getExtras().getString(Api.EXTRA_HEADERS);
                 String content = intent.getExtras().getString(Api.EXTRA_CONTENT);
                 Log.d(Api.DATAPLUG_TAG, "Got request @" +friendId + ": " + method + " " + uri);
+                
+                if (friendId == null || accountId == null || requestId == null || method == null || uri == null) {
+                    Log.e(Api.DATAPLUG_TAG, "missing mandatory requeset parameter");
+                    return 0;
+                }
 
                 PluggerRequest request = new PluggerRequest();
                 request.setMethod(method);
                 request.setUri(uri);
                 request.setFriendId(friendId);
                 request.setRequestId(requestId);
-                request.setContent(content.getBytes());
+                if (content != null)
+                    request.setContent(content.getBytes());
                 request.setAccountId(accountId);
                 request.setHeaders(headers);
                 mDataPlugger.sendRequestToRemote(request);
@@ -285,12 +291,18 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
                 String headers = intent.getExtras().getString(Api.EXTRA_HEADERS);
                 String content = intent.getExtras().getString(Api.EXTRA_CONTENT);
 
+                if (friendId == null || accountId == null || requestId == null) {
+                    Log.e(Api.DATAPLUG_TAG, "missing mandatory requeset parameter");
+                    return 0;
+                }
+
                 PluggerResponse response = new PluggerResponse();
                 response.setCode(200);
                 response.setStatusString("OK");
                 response.setFriendId(friendId);
                 response.setRequestId(requestId);
-                response.setContent(content.getBytes());
+                if (content != null)
+                    response.setContent(content.getBytes());
                 response.setAccountId(accountId);
                 response.setHeaders(headers);
                 mDataPlugger.sendResponseToRemote(response);

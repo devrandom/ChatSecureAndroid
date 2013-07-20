@@ -107,6 +107,8 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
 
     private DataAdapter mDataListener;
 
+    private Address mLocalUser;
+
     public ChatSessionAdapter(ChatSession adaptee, ImConnectionAdapter connection) {
         mAdaptee = adaptee;
         mDataListener = new DataAdapter();
@@ -118,12 +120,12 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
         mStatusBarNotifier = service.getStatusBarNotifier();
         mChatSessionManager = (ChatSessionManagerAdapter) connection.getChatSessionManager();
 
-        String localUserId = mConnection.getLoginUser().getAddress().getAddress();
+        mLocalUser = mConnection.getLoginUser().getAddress();
         String remoteUserId = mAdaptee.getParticipant().getAddress().getAddress();
 
         mOtrChatManager = service.getOtrChatManager();
-        mOtrChatSession = new OtrChatSessionAdapter(localUserId, remoteUserId, mOtrChatManager);
-        SessionID sessionId = mOtrChatManager.getSessionId(localUserId, remoteUserId);
+        mOtrChatSession = new OtrChatSessionAdapter(mLocalUser.getAddress(), remoteUserId, mOtrChatManager);
+        SessionID sessionId = mOtrChatManager.getSessionId(mLocalUser.getAddress(), remoteUserId);
 
         mOtrKeyManager = new OtrKeyManagerAdapter(mOtrChatManager.getKeyManager(), sessionId, null);
 
@@ -771,16 +773,24 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
                 }
             }
             mRemoteListeners.finishBroadcast();
+
+            try {
+                if (mOtrChatSession.isChatEncrypted()) {
+                    mDataHandler.onChatEncrypted(mLocalUser);
+                }
+            } catch (RemoteException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         @Override
         public void onIncomingDataRequest(ChatSession session, Message msg, byte[] value) {
-            mDataHandler.onIncomingRequest(msg.getTo(), value);
+            mDataHandler.onIncomingRequest(mLocalUser, value);
         }
 
         @Override
         public void onIncomingDataResponse(ChatSession session, Message msg, byte[] value) {
-            mDataHandler.onIncomingResponse(msg.getTo(), value);
+            mDataHandler.onIncomingResponse(mLocalUser, value);
         }
     }
 

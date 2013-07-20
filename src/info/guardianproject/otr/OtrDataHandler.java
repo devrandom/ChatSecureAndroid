@@ -258,7 +258,8 @@ public class OtrDataHandler implements DataHandler {
         response.addHeader("Request-Id", uid);
         try {
             writer.write(response);
-            outBuf.write(body);
+            if (body != null)
+                outBuf.write(body);
             outBuf.flush();
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -495,6 +496,8 @@ public class OtrDataHandler implements DataHandler {
         
         try {
             writer.write(req);
+            if (body != null)
+                outBuf.write(body);
             outBuf.write(body);
             outBuf.flush();
         } catch (IOException e) {
