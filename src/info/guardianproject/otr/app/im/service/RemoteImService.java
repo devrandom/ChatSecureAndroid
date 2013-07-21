@@ -199,10 +199,13 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
         // Have the heartbeat start autoLogin, unless onStart turns this off
         mNeedCheckAutoLogin = true;
 
-      //  if (getGlobalSettings().getUseForegroundPriority())
-            startForegroundCompat();
+        //  if (getGlobalSettings().getUseForegroundPriority())
+        startForegroundCompat();
         
         
+        // DATAPLUG
+        Discoverer.getInstance(this).discoverDataPlugs();
+
     }
 
     private void startForegroundCompat() {
@@ -246,7 +249,6 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Debug.waitForDebugger();
         if (mDataPlugger == null) {
             mDataPlugger = new DataPlugger(this, (ImApp)getApplication());
         }
@@ -269,7 +271,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
                 Log.d(Api.DATAPLUG_TAG, "Got request @" +friendId + ": " + method + " " + uri);
                 
                 if (friendId == null || accountId == null || requestId == null || method == null || uri == null) {
-                    Log.e(Api.DATAPLUG_TAG, "missing mandatory requeset parameter");
+                    Log.e(Api.DATAPLUG_TAG, "missing mandatory requeset parameter (friendId, accountId, requestId, method, uri)");
                     return 0;
                 }
 
@@ -715,5 +717,19 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
             }
         }
         return null;
+    }
+
+    @Override
+    public IImConnection getConnectionForLocalAddress(String accountId) {
+        for (ImConnectionAdapter conn : mConnections) {
+            if (conn.getLoginUser().getName().equals(accountId)) {
+                return conn;
+            }
+        }
+        return null;
+    }
+
+    public DataPlugger getDataPlugger() {
+        return mDataPlugger;
     }
 }

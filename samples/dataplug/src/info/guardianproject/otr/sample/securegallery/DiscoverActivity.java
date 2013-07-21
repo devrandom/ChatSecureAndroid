@@ -124,16 +124,18 @@ public class DiscoverActivity extends Activity {
 	
 	private void doActivate(Intent aIntent){
 		String zFriendId = aIntent.getStringExtra(Api.EXTRA_FRIEND_ID);
+		String zAccountId = aIntent.getStringExtra(Api.EXTRA_ACCOUNT_ID);
 		Toast.makeText(this, "Friend id:" + zFriendId, Toast.LENGTH_LONG).show();
 		sRequestId = "123456798" ;
-		sendRequest(zFriendId, sRequestId);
+		sendRequest(zAccountId, zFriendId, sRequestId);
 	}
 	
-	private void sendRequest(String aFriendId, String aRequestId) {
+	private void sendRequest(String aAccountId, String aFriendId, String aRequestId) {
 		Intent zIntent = new Intent();
 		zIntent.setAction(Api.ACTION_REQUEST) ;
 		zIntent.putExtra( Api.EXTRA_METHOD , "GET" ) ;
 		zIntent.putExtra( Api.EXTRA_URI , "chatsecure:/gallery/activate" ) ;
+		zIntent.putExtra( Api.EXTRA_ACCOUNT_ID , aAccountId ) ;
 		zIntent.putExtra( Api.EXTRA_FRIEND_ID , aFriendId ) ;
 		zIntent.putExtra( Api.EXTRA_REQUEST_ID , aRequestId ) ;
 		startService( zIntent ) ;

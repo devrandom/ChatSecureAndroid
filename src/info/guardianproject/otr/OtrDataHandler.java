@@ -20,6 +20,8 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
 
+import org.apache.http.Header;
+import org.apache.http.HeaderIterator;
 import org.apache.http.HttpException;
 import org.apache.http.HttpMessage;
 import org.apache.http.HttpRequest;
@@ -142,14 +144,10 @@ public class OtrDataHandler implements DataHandler {
         String requestMethod = req.getRequestLine().getMethod();
         String uid = req.getFirstHeader("Request-Id").getValue();
 
-        if (requestMethod.equals("OFFER")) {
+        String url = req.getRequestLine().getUri();
+
+        if (requestMethod.equals("OFFER") && url.startsWith("otr-in-band:")) {
             Log.i(TAG, "incoming OFFER");
-            String url = req.getRequestLine().getUri();
-            if (!url.startsWith("otr-in-band:")) {
-                Log.w(TAG, "Unknown url scheme " + url);
-                sendResponse(us, 400, "Unknown scheme", uid, EMPTY_BODY);
-                return;
-            }
             sendResponse(us, 200, "OK", uid, EMPTY_BODY);
             if (!req.containsHeader("File-Length"))
             {
@@ -169,7 +167,7 @@ public class OtrDataHandler implements DataHandler {
             // Handle offer
             // TODO ask user to confirm we want this
             transfer.perform();
-        } else if (requestMethod.equals("GET")) {
+        } else if (requestMethod.equals("GET") && url.startsWith("otr-in-band:")) {
             Log.i(TAG, "incoming GET");
             ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
             try {
@@ -216,8 +214,26 @@ public class OtrDataHandler implements DataHandler {
             Log.i(TAG, "Sent sha1 is " + sha1sum(body));
             sendResponse(us, 200, "OK", uid, body);
         } else {
-            Log.w(TAG, "Unknown method " + requestMethod);
-            sendResponse(us, 400, "OK", uid, EMPTY_BODY);
+            ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
+            try {
+                readIntoByteBuffer(byteBuffer, inBuf);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            StringBuffer headers = new StringBuffer();
+            HeaderIterator iter = req.headerIterator();
+            while (iter.hasNext()) {
+                Header header = iter.nextHeader();
+                headers.append(header.getName());
+                headers.append(": ");
+                headers.append(header.getValue());
+                headers.append("\n");
+            }
+            if (mDataListener.onIncomingRequest(requestMethod, url, uid, headers.toString(), byteBuffer.toByteArray())) {
+            } else {
+                Log.w(TAG, "Unknown method " + requestMethod);
+                sendResponse(us, 404, "Not found", uid, EMPTY_BODY);
+            }
         }
     }
 
@@ -540,9 +556,10 @@ public class OtrDataHandler implements DataHandler {
     public void sendDataRequest(Address us, String method, String uri, String requestId,
             String headersString, byte[] content) {
         Map<String, String> headers = Maps.newHashMap();
-        naiveHeadersParse(headersString, headers);
+        if (headersString != null)
+            naiveHeadersParse(headersString, headers);
         headers.put("Request-Id", requestId);
-        sendRequest(us, "OFFER", uri, requestId, headers, content, new Request("OFFER", uri));
+        sendRequest(us, method, uri, requestId, headers, content, new Request("OFFER", uri));
     }
 
     private void naiveHeadersParse(String headersString, Map<String, String> headers) {

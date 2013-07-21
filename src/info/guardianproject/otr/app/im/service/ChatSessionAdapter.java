@@ -25,6 +25,9 @@ import info.guardianproject.otr.OtrChatSessionAdapter;
 import info.guardianproject.otr.OtrDataHandler;
 import info.guardianproject.otr.OtrKeyManagerAdapter;
 import info.guardianproject.otr.app.im.IChatListener;
+import info.guardianproject.otr.app.im.dataplug.Descriptor;
+import info.guardianproject.otr.app.im.dataplug.Discoverer;
+import info.guardianproject.otr.app.im.dataplug.PluggerRequest;
 import info.guardianproject.otr.app.im.engine.Address;
 import info.guardianproject.otr.app.im.engine.ChatGroup;
 import info.guardianproject.otr.app.im.engine.ChatGroupManager;
@@ -47,6 +50,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -54,6 +58,7 @@ import java.util.List;
 import net.java.otr4j.session.SessionID;
 
 import org.jivesoftware.smack.packet.Packet;
+import org.json.JSONException;
 
 import android.content.ContentResolver;
 import android.content.ContentUris;
@@ -108,6 +113,8 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
     private DataAdapter mDataListener;
 
     private Address mLocalUser;
+
+    private List<Descriptor> mRemotePluginDescriptors;
 
     public ChatSessionAdapter(ChatSession adaptee, ImConnectionAdapter connection) {
         mAdaptee = adaptee;
@@ -615,6 +622,32 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
             // TODO Auto-generated method stub
             
         }
+
+        @Override
+        public boolean onIncomingRequest(String requestMethod, String url, String uid, String headers, byte[] body) {
+            if (requestMethod.equals("POST") && url.equals("/discover")) {
+                try {
+                    mRemotePluginDescriptors = Discoverer.parseDiscoveryPayload(new String(body, "UTF-8"));
+                } catch (UnsupportedEncodingException e) {
+                    mDataHandler.sendDataResponse(mLocalUser, 400, "Bad UTF-8", uid, null);
+                    return true;
+                } catch (JSONException e) {
+                    mDataHandler.sendDataResponse(mLocalUser, 400, "Bad JSON", uid, null);
+                    return true;
+                }
+                mDataHandler.sendDataResponse(mLocalUser, 200, "OK", uid, null);
+                return true;
+            } else {
+                PluggerRequest request = new PluggerRequest();
+                request.setMethod(requestMethod);
+                request.setUri(url);
+                request.setAccountId(mLocalUser.getAddress());
+                request.setFriendId(getAddress());
+                request.setContent(body);
+                request.setHeaders(headers);
+                return service.getDataPlugger().sendRequestToLocal(request);
+            }
+        }
     }
     
     class ListenerAdapter implements MessageListener, GroupMemberListener {
@@ -776,7 +809,8 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
 
             try {
                 if (mOtrChatSession.isChatEncrypted()) {
-                    mDataHandler.onChatEncrypted(mLocalUser);
+                    String discovery = Discoverer.getInstance(service).getDiscoveryPayload();
+                    mDataHandler.sendDataRequest(mLocalUser, "POST", "/discover", "disco", null, discovery.getBytes());
                 }
             } catch (RemoteException e) {
                 throw new RuntimeException(e);
@@ -863,5 +897,15 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
         }
 
         mDataHandler.sendDataResponse(mConnection.getLoginUser().getAddress(), code, statusString, requestId, content);
+    }
+
+    @Override
+    public List<Descriptor> getRemoteDataPlugDescriptors() throws RemoteException {
+        return mRemotePluginDescriptors;
+    }
+
+    @Override
+    public void activatePlugin(String uri) throws RemoteException {
+        Discoverer.getInstance(service).activatePlug(mLocalUser.getAddress(), getAddress(), uri);
     }
 }

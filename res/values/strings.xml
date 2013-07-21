@@ -132,6 +132,7 @@
     switch between chats. May be overrided by the plugin.
     -->
     <string name="menu_switch_chats">Switch chats</string>
+    <string name="menu_social">Social</string>
     <!-- Screen menu item on the chat screen to insert smiley. May be overrided by the plugin. -->
     <string name="menu_insert_smiley">Insert smiley</string>
     <string name="menu_resend">Resend</string>

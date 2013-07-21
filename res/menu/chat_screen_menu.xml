@@ -55,6 +55,11 @@
          android:showAsAction="never"
         />
 
+    <item android:id="@+id/menu_social"
+        android:title="@string/menu_social"
+         android:showAsAction="never"
+        />
+
 <!-- 
 	<item android:id="@+id/menu_clear_chat"
 		android:title="@string/menu_clear_chat"

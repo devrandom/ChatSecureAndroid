@@ -7,6 +7,7 @@ import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -18,6 +19,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.util.Log;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 public class Discoverer {
@@ -60,65 +62,19 @@ public class Discoverer {
         }
         Log.i(Api.DATAPLUG_TAG, "dataplugs end.");
     }
-    
-    public void activatePlug(String uri) {
+
+    public void activatePlug(String accountId, String friendId, String uri) {
         Registration registration = registrations.get(uri);
         if (registration == null) {
             return;
         }
-        
+
         Intent activateIntent = new Intent(Api.ACTIVATE_ACTION);
         activateIntent.setComponent(registration.getComponent());
         activateIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        activateIntent.putExtra(Api.EXTRA_FRIEND_ID, "friend1");
+        activateIntent.putExtra(Api.EXTRA_ACCOUNT_ID, accountId);
+        activateIntent.putExtra(Api.EXTRA_FRIEND_ID, friendId);
         mContext.startActivity(activateIntent);
-    }
-
-    static class Descriptor {
-        private String uri;
-        private String name;
-
-        public String getUri() {
-            return uri;
-        }
-
-        public void setUri(String uri) {
-            this.uri = uri;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-    }
-
-    static class Registration {
-        private boolean publish;
-        private ComponentName component;
-        Descriptor descriptor;
-
-        public Registration() {
-            this.descriptor = new Descriptor();
-        }
-
-        public void setPublish(boolean publish) {
-            this.publish = publish;
-        }
-
-        public boolean isPublish() {
-            return publish;
-        }
-        
-        public void setComponent(ComponentName component) {
-            this.component = component;
-        }
-        
-        public ComponentName getComponent() {
-            return component;
-        }
     }
 
     /**
@@ -131,13 +87,14 @@ public class Discoverer {
     public void register(String token, String registration_json) {
         if (token == null || !tokens.containsKey(token)) {
             Log.e(Api.DATAPLUG_TAG, "unknown or null token");
+            return;
         }
 
         Registration registration = new Registration();
         registration.setComponent(tokens.get(token));
-        
+
         JSONObject reg;
-        
+
         try {
             reg = new JSONObject(registration_json);
         } catch (NullPointerException e) {
@@ -147,7 +104,7 @@ public class Discoverer {
             Log.e(Api.DATAPLUG_TAG, "Could not parse registration json");
             return;
         }
-        
+
         try {
             registration.setPublish(reg.getJSONObject("meta").getBoolean("publish"));
         } catch (JSONException e) {
@@ -162,7 +119,6 @@ public class Discoverer {
             // FIXME Ask user
             registrations.put(uri, registration);
             Log.i(Api.DATAPLUG_TAG, "registered " + uri);
-            activatePlug(uri);
         } catch (JSONException e) {
             Log.e(Api.DATAPLUG_TAG, "Could not parse descriptor json");
             return;
@@ -183,11 +139,41 @@ public class Discoverer {
     }
 
     public Registration findRegistration(String uri) {
-        for (String key: registrations.keySet()) {
+        for (String key : registrations.keySet()) {
             if (uri.startsWith(key)) {
                 return registrations.get(key);
             }
         }
         return null;
+    }
+
+    public String getDiscoveryPayload() {
+        try {
+            JSONObject payload = new JSONObject();
+            payload.put("plugins", new JSONArray());
+            for (Map.Entry<String, Registration> reg : registrations.entrySet()) {
+                JSONObject entry = new JSONObject();
+                entry.put("uri", reg.getKey());
+                entry.put("name", reg.getValue().getDescriptor().getName());
+                payload.accumulate("plugins", entry);
+            }
+            return payload.toString();
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static List<Descriptor> parseDiscoveryPayload(String payload) throws JSONException {
+        List<Descriptor> descs = Lists.newArrayList();
+        JSONObject disco = new JSONObject(payload);
+        JSONArray plugins = disco.getJSONArray("plugins");
+        for (int i = 0; i < plugins.length(); i++) {
+            JSONObject plugin = plugins.getJSONObject(i);
+            Descriptor desc = new Descriptor();
+            desc.setName(plugin.getString("name"));
+            desc.setUri(plugin.getString("uri"));
+            descs.add(desc);
+        }
+        return descs;
     }
 }

@@ -256,6 +256,9 @@ public class NewChatActivity extends ThemeableActivity implements View.OnCreateC
             }
             return true;
 
+        case R.id.menu_social:
+            mChatView.beSocial();
+            return true;
         case android.R.id.home:
             showChatList();
             return true;

@@ -781,13 +781,18 @@ public class XmppConnection extends ImConnection implements CallbackHandler {
                     return;
                 */
                 
-                Message rec = new Message(body);
-                rec.setTo(mUser.getAddress());
-                rec.setFrom(new XmppAddress(smackMessage.getFrom()));
-                rec.setDateTime(new Date());
-
                 ChatSession session = findOrCreateSession(address);
-                boolean good = session.onReceiveMessage(rec);
+
+                boolean good = true;
+                
+                if (body != null) {
+                    Message rec = new Message(body);
+                    rec.setTo(mUser.getAddress());
+                    rec.setFrom(new XmppAddress(smackMessage.getFrom()));
+                    rec.setDateTime(new Date());
+
+                    good = session.onReceiveMessage(rec);
+                }
                 
                 if (smackMessage.getExtension("request", DeliveryReceipts.NAMESPACE) != null) {
                     if (good) {

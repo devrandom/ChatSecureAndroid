@@ -192,9 +192,6 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
     protected void onResume() {
         super.onResume();
 
-        // DATAPLUG
-        Discoverer.getInstance(this).discoverDataPlugs();
-
         if (mCacheWord == null)
             connectToCacheWord ();
        

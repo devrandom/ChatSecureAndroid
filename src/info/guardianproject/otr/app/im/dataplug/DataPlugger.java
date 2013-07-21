@@ -4,7 +4,6 @@ import info.guardianproject.otr.app.im.IChatSession;
 import info.guardianproject.otr.app.im.IChatSessionManager;
 import info.guardianproject.otr.app.im.IImConnection;
 import info.guardianproject.otr.app.im.ImService;
-import info.guardianproject.otr.app.im.dataplug.Discoverer.Registration;
 import android.content.Context;
 import android.content.Intent;
 import android.os.RemoteException;
@@ -90,17 +89,18 @@ public class DataPlugger {
 
     private IChatSession getChatSession(String accountId, String friendId) {
         try {
-            return getChatSessionManager(Integer.parseInt(accountId)).getChatSession(friendId);
-        } catch (NumberFormatException e) {
-            throw new RuntimeException(e);
+            IChatSessionManager chatSessionManager = getChatSessionManager(accountId);
+            if (chatSessionManager == null)
+                return null;
+            return chatSessionManager.getChatSession(friendId);
         } catch (RemoteException e) {
             Log.e(Api.DATAPLUG_TAG, "could not get chat session", e);
         }
         return null;
     }
 
-    private IChatSessionManager getChatSessionManager(long providerId) {
-        IImConnection conn = mService.getConnectionForProvider(providerId);
+    private IChatSessionManager getChatSessionManager(String accountId) {
+        IImConnection conn = mService.getConnectionForLocalAddress(accountId);
 
         IChatSessionManager chatSessionManager = null;
         if (conn != null) {

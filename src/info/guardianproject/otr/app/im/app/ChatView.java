@@ -31,6 +31,7 @@ import info.guardianproject.otr.app.im.R;
 import info.guardianproject.otr.app.im.app.MessageView.DeliveryState;
 import info.guardianproject.otr.app.im.app.adapter.ChatListenerAdapter;
 import info.guardianproject.otr.app.im.app.adapter.ChatSessionListenerAdapter;
+import info.guardianproject.otr.app.im.dataplug.Descriptor;
 import info.guardianproject.otr.app.im.engine.Contact;
 import info.guardianproject.otr.app.im.engine.ImConnection;
 import info.guardianproject.otr.app.im.engine.ImErrorInfo;
@@ -43,6 +44,9 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
+
+import com.google.common.collect.Lists;
 
 import net.java.otr4j.session.SessionStatus;
 import android.app.Activity;
@@ -1143,20 +1147,7 @@ public class ChatView extends LinearLayout {
         String message = null;
         boolean isConnected;
 
-        SessionStatus sessionStatus = SessionStatus.PLAINTEXT;
-
-        initOtr();
-        
-        mActivity.updateOtrMenuState();
-
-        //check if the chat is otr or not
-        if (mOtrChatSession != null) {
-            try {
-                sessionStatus = SessionStatus.values()[mOtrChatSession.getChatStatus()];
-            } catch (RemoteException e) {
-                Log.w("Gibber", "Unable to call remote OtrChatSession from ChatView", e);
-            }
-        }
+        SessionStatus sessionStatus = getOtrSessionStatus();
 
         try {
             IImConnection conn = mApp.getConnection(mProviderId);
@@ -1246,6 +1237,24 @@ public class ChatView extends LinearLayout {
             mWarningText.setText(message);
         }
 
+    }
+
+    private SessionStatus getOtrSessionStatus() {
+        SessionStatus sessionStatus = SessionStatus.PLAINTEXT;
+
+        initOtr();
+        
+        mActivity.updateOtrMenuState();
+
+        //check if the chat is otr or not
+        if (mOtrChatSession != null) {
+            try {
+                sessionStatus = SessionStatus.values()[mOtrChatSession.getChatStatus()];
+            } catch (RemoteException e) {
+                Log.w("Gibber", "Unable to call remote OtrChatSession from ChatView", e);
+            }
+        }
+        return sessionStatus;
     }
 
     @Override
@@ -1790,5 +1799,46 @@ public class ChatView extends LinearLayout {
 
     EditText getComposedMessage() {
         return mComposeMessage;
+    }
+
+    public void beSocial() {
+        try {
+            if (getOtrSessionStatus() != SessionStatus.ENCRYPTED) {
+                Toast.makeText(mContext, "Encrypt session first", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            final List<Descriptor> descs = mChatSession.getRemoteDataPlugDescriptors();
+            if (descs == null) {
+                Toast.makeText(mContext, "Did not get a list of plugins from friend", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            String[] names = new String[descs.size()];
+            int count = 0; 
+            for (Descriptor desc : descs) {
+                names[count++] = desc.getName();
+            }
+
+            log("Got descriptors: " + descs.size());
+            
+            new AlertDialog.Builder(mContext).setItems(
+                    names,
+                    new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            String uri = descs.get(which).getUri();
+                            try {
+                                mChatSession.activatePlugin(uri);
+                            } catch (RemoteException e) {
+                                mHandler.showServiceErrorAlert();
+                            }
+                        }
+                    }).setNegativeButton(R.string.cancel,
+                            new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int whichButton) {
+                        }
+                    }).show();
+        } catch (RemoteException e) {
+            mHandler.showServiceErrorAlert();
+        }
     }
 }

@@ -21,7 +21,7 @@ import info.guardianproject.otr.app.im.IChatListener;
 import info.guardianproject.otr.app.im.engine.Message;
 import info.guardianproject.otr.IOtrKeyManager;
 import info.guardianproject.otr.IOtrChatSession;
-
+import info.guardianproject.otr.app.im.dataplug.Descriptor;
 
 
 interface IChatSession {
@@ -88,6 +88,11 @@ interface IChatSession {
      * Sends data offer to peer
      */
     void offerData(String localUri);
+    
+    /**
+     * Invoked a plugin
+     */
+    void activatePlugin(String uri);
 
     /**
      * Sends data request to peer
@@ -113,4 +118,9 @@ interface IChatSession {
     * Get OTR Key Manager
     */
     IOtrKeyManager getOtrKeyManager();
+    
+    /**
+    * Get remote plugin descriptors
+    */
+    List<Descriptor> getRemoteDataPlugDescriptors();
 }
