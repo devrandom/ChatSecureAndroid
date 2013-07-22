@@ -9,6 +9,12 @@ import android.content.Intent;
 import android.os.RemoteException;
 import android.util.Log;
 
+/**
+ * Handle communication between a local DataPlug and a remote one.
+ * 
+ * @author devrandom
+ *
+ */
 public class DataPlugger {
     private Context mContext;
     private ImService mService;
@@ -18,6 +24,7 @@ public class DataPlugger {
         this.mService = service;
     }
 
+    /** Send a respone from local to remote */
     public boolean sendResponseToRemote(PluggerResponse response) {
         IChatSession chatSession = getChatSession(response.getAccountId(), response.getFriendId());
         if (chatSession == null) {
@@ -33,6 +40,7 @@ public class DataPlugger {
         return true;
     }
 
+    /** Send a respone from remote to local */
     public boolean sendResponseToLocal(PluggerResponse response) {
         Registration registration = Discoverer.getInstance(mContext).findRegistration(
                 response.getUri());
@@ -51,6 +59,7 @@ public class DataPlugger {
         return true;
     }
 
+    /** Send a request from local to remote */
     public boolean sendRequestToRemote(PluggerRequest request) {
         IChatSession chatSession = getChatSession(request.getAccountId(), request.getFriendId());
         if (chatSession == null) {
@@ -67,6 +76,7 @@ public class DataPlugger {
         return true;
     }
 
+    /** Send a request from remote to local */
     public boolean sendRequestToLocal(PluggerRequest request) {
         Registration registration = Discoverer.getInstance(mContext).findRegistration(
                 request.getUri());

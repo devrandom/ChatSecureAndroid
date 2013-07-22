@@ -3,6 +3,12 @@ package info.guardianproject.otr.app.im.dataplug;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+/**
+ * Part of the registration of a local DataPlug.
+ * 
+ * @author devrandom
+ *
+ */
 public class Descriptor implements Parcelable {
     private String uri;
     private String name;

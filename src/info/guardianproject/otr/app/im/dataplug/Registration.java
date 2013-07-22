@@ -2,6 +2,7 @@ package info.guardianproject.otr.app.im.dataplug;
 
 import android.content.ComponentName;
 
+/** The registration of a local DataPlug */
 public class Registration {
     private boolean publish;
     private ComponentName component;

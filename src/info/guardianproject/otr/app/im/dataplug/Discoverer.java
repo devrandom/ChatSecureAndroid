@@ -22,18 +22,25 @@ import android.util.Log;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
+/**
+ * Handle DataPlug discovery (local and over the OTR channel) and handle registration.
+ * 
+ * @author devrandom
+ *
+ */
 public class Discoverer {
     private static Discoverer sInstance;
     private Context mContext;
     private Map<String, ComponentName> tokens;
     private Map<String, Registration> registrations;
 
-    public Discoverer(Context context) {
+    private Discoverer(Context context) {
         mContext = context;
         tokens = Maps.newHashMap();
         registrations = Maps.newHashMap();
     }
 
+    /** Get the singleton Discoverer */
     public static Discoverer getInstance(Context context) {
         if (sInstance == null) {
             sInstance = new Discoverer(context);
@@ -42,6 +49,7 @@ public class Discoverer {
         return sInstance;
     }
 
+    /** Initiate discovery of local DataPlugs */
     public void discoverDataPlugs() {
         Intent intent = new Intent(Api.DISCOVER_ACTION);
 
@@ -78,6 +86,7 @@ public class Discoverer {
     }
 
     /**
+     * Register a local DataPlug.
      * 
      * @param token
      * @param registration sample: { "descriptor": { "uri":
@@ -138,6 +147,7 @@ public class Discoverer {
         return token;
     }
 
+    /** Find the DataPlug registration associated with a uri (matching prefix) */
     public Registration findRegistration(String uri) {
         for (String key : registrations.keySet()) {
             if (uri.startsWith(key)) {
@@ -147,6 +157,7 @@ public class Discoverer {
         return null;
     }
 
+    /** Get the discovery JSON to be transmitted over the OTR channel */
     public String getDiscoveryPayload() {
         try {
             JSONObject payload = new JSONObject();
@@ -163,6 +174,7 @@ public class Discoverer {
         }
     }
 
+    /** Parse a discovery JSON we received over the OTR channel */
     public static List<Descriptor> parseDiscoveryPayload(String payload) throws JSONException {
         List<Descriptor> descs = Lists.newArrayList();
         JSONObject disco = new JSONObject(payload);

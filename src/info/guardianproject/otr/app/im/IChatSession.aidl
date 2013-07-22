@@ -114,13 +114,13 @@ interface IChatSession {
     */
     IOtrChatSession getOtrChatSession();
     
-     /**
-    * Get OTR Key Manager
-    */
+    /**
+     * Get OTR Key Manager
+     */
     IOtrKeyManager getOtrKeyManager();
     
     /**
-    * Get remote plugin descriptors
-    */
+     * Get remote DataPlug descriptors
+     */
     List<Descriptor> getRemoteDataPlugDescriptors();
 }

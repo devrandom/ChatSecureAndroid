@@ -1,5 +1,6 @@
 package info.guardianproject.otr.app.im.dataplug;
 
+/** Base class for DataPlug requests and responses */
 public class PluggerMessage {
     private String uri;
     private String accountId;
@@ -14,18 +15,24 @@ public class PluggerMessage {
     public void setUri(String uri) {
         this.uri = uri;
     }
+    
+    /** The JID of the friend */
     public String getFriendId() {
         return friendId;
     }
     public void setFriendId(String friendId) {
         this.friendId = friendId;
     }
+    
+    /** The JID of the local user */
     public String getAccountId() {
         return accountId;
     }
     public void setAccountId(String accountId) {
         this.accountId = accountId;
     }
+    
+    /** A unique request ID */
     public String getRequestId() {
         return requestId;
     }
