@@ -19,13 +19,12 @@ package info.guardianproject.otr.app.im.app;
 import info.guardianproject.cacheword.CacheWordActivityHandler;
 import info.guardianproject.cacheword.ICacheWordSubscriber;
 import info.guardianproject.cacheword.SQLCipherOpenHelper;
-import info.guardianproject.otr.OtrAndroidKeyManagerImpl;
 import info.guardianproject.otr.app.im.R;
-import info.guardianproject.otr.app.im.dataplug.Discoverer;
 import info.guardianproject.otr.app.im.engine.ImConnection;
 import info.guardianproject.otr.app.im.provider.Imps;
-import info.guardianproject.otr.app.im.service.ImServiceConstants;
 import info.guardianproject.otr.app.im.ui.AboutActivity;
+import net.hockeyapp.android.CrashManager;
+import net.hockeyapp.android.UpdateManager;
 import net.sqlcipher.database.SQLiteDatabase;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -102,6 +101,12 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
         
       
         mDoSignIn = getIntent().getBooleanExtra("doSignIn", true);
+        
+        checkForCrashes();
+        
+        checkForUpdates();
+        
+     
     }
     
     private void connectToCacheWord ()
@@ -167,24 +172,6 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
     }
 
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        boolean success = OtrAndroidKeyManagerImpl.handleKeyScanResult(requestCode, resultCode, data, this);
-        
-        if (success)
-        {
-            Toast.makeText(this, R.string.successfully_imported_otr_keyring, Toast.LENGTH_SHORT).show();
-        }
-        else
-        {
-            Toast.makeText(this, R.string.otr_keyring_not_imported_please_check_the_file_exists_in_the_proper_format_and_location, Toast.LENGTH_SHORT).show();
-
-        }
-        
-        
-    }
 
 
 
@@ -212,10 +199,7 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
             {
                 cursorUnlocked(pkey);
                 
-                boolean doKeyStoreImport = OtrAndroidKeyManagerImpl.checkForKeyImport(getIntent(), this);
-                
-                if (!doKeyStoreImport)
-                    doOnResume();
+                doOnResume();
             }
         }
         else
@@ -292,28 +276,21 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
     
    
     // Show signed in account
+    
     protected boolean showActiveAccount() {
         if (!mProviderCursor.moveToFirst())
             return false;
         do {
             if (!mProviderCursor.isNull(ACTIVE_ACCOUNT_ID_COLUMN) && isSignedIn(mProviderCursor)) {
-                gotoAccount();
+                showAccounts();
                 return true;
             }
         } while (mProviderCursor.moveToNext());
         return false;
     }
 
-    protected void gotoAccount() {
-        long accountId = mProviderCursor.getLong(ACTIVE_ACCOUNT_ID_COLUMN);
-
-        Intent intent = new Intent(this, ChatListActivity.class);
-        // clear the back stack of the account setup
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        intent.putExtra(ImServiceConstants.EXTRA_INTENT_ACCOUNT_ID, accountId);
-        startActivity(intent);
-        finish();
-    }
+    
+   
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -578,4 +555,14 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
        
         
     }
+    
+
+    private void checkForCrashes() {
+        CrashManager.register(this, ImApp.HOCKEY_APP_ID);
+      }
+
+      private void checkForUpdates() {
+        // Remove this for store builds!
+        UpdateManager.register(this, ImApp.HOCKEY_APP_ID);
+      }
 }

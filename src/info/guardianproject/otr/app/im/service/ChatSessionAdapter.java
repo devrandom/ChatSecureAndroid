@@ -55,8 +55,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import net.java.otr4j.session.SessionID;
-
 import org.jivesoftware.smack.packet.Packet;
 import org.json.JSONException;
 
@@ -132,9 +130,8 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
 
         mOtrChatManager = service.getOtrChatManager();
         mOtrChatSession = new OtrChatSessionAdapter(mLocalUser.getAddress(), remoteUserId, mOtrChatManager);
-        SessionID sessionId = mOtrChatManager.getSessionId(mLocalUser.getAddress(), remoteUserId);
 
-        mOtrKeyManager = new OtrKeyManagerAdapter(mOtrChatManager.getKeyManager(), sessionId, null);
+        mOtrKeyManager = new OtrKeyManagerAdapter(mOtrChatManager, mLocalUser.getAddress(), remoteUserId);
 
         mListenerAdapter = new ListenerAdapter();
 
@@ -204,7 +201,7 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
         return mChatURI;
     }
 
-    public String[] getPariticipants() {
+    public String[] getParticipants() {
         if (mIsGroupChat) {
             Contact self = mConnection.getLoginUser();
             ChatGroup group = (ChatGroup) mAdaptee.getParticipant();

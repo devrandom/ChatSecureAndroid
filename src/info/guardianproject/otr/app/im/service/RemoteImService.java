@@ -25,11 +25,11 @@ import info.guardianproject.otr.app.im.IImConnection;
 import info.guardianproject.otr.app.im.IRemoteImService;
 import info.guardianproject.otr.app.im.ImService;
 import info.guardianproject.otr.app.im.R;
-import info.guardianproject.otr.app.im.app.AccountListActivity;
 import info.guardianproject.otr.app.im.app.ImApp;
 import info.guardianproject.otr.app.im.app.ImPluginHelper;
 import info.guardianproject.otr.app.im.app.NetworkConnectivityListener;
 import info.guardianproject.otr.app.im.app.NetworkConnectivityListener.State;
+import info.guardianproject.otr.app.im.app.NewChatActivity;
 import info.guardianproject.otr.app.im.dataplug.Api;
 import info.guardianproject.otr.app.im.dataplug.DataPlugger;
 import info.guardianproject.otr.app.im.dataplug.Discoverer;
@@ -41,6 +41,7 @@ import info.guardianproject.otr.app.im.engine.ImConnection;
 import info.guardianproject.otr.app.im.engine.ImException;
 import info.guardianproject.otr.app.im.plugin.ImPluginInfo;
 import info.guardianproject.otr.app.im.provider.Imps;
+import info.guardianproject.util.Debug;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -56,10 +57,10 @@ import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.NetworkInfo;
-import android.os.Debug;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
@@ -171,8 +172,13 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
 
     @Override
     public void onCreate() {
-
         debug("ImService started");
+        Debug.onServiceStart();
+
+        // Clear all account statii to logged-out, since we just got started and we don't want
+        // leftovers from any previous crash.
+        clearConnectionStatii();
+        
         mStatusBarNotifier = new StatusBarNotifier(this);
         mServiceHandler = new ServiceHandler();
 
@@ -212,7 +218,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
         Notification notification = new Notification(R.drawable.ic_stat_status, getString(R.string.app_name),
                 System.currentTimeMillis());
         notification.flags = Notification.FLAG_ONGOING_EVENT | Notification.FLAG_NO_CLEAR;
-        Intent notificationIntent = new Intent(this, AccountListActivity.class);
+        Intent notificationIntent = new Intent(this, NewChatActivity.class);
         notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         notification.contentIntent = PendingIntent.getActivity(this, 0, notificationIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT);
@@ -325,7 +331,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
     @Override
     public void onStart(Intent intent, int startId) {
         super.onStart(intent, startId);
-        
+
         if (intent != null && intent.hasExtra(ImServiceConstants.EXTRA_CHECK_AUTO_LOGIN))
             mNeedCheckAutoLogin = intent.getBooleanExtra(ImServiceConstants.EXTRA_CHECK_AUTO_LOGIN,
                 false);
@@ -344,6 +350,25 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
     }
     
     
+    private void clearConnectionStatii() {
+        ContentResolver cr = getContentResolver();
+        ContentValues values = new ContentValues(2);
+
+        values.put(Imps.AccountStatus.PRESENCE_STATUS, Imps.Presence.OFFLINE);
+        values.put(Imps.AccountStatus.CONNECTION_STATUS, Imps.ConnectionStatus.OFFLINE);
+        
+        try
+        {
+            //insert on the "account_status" uri actually replaces the existing value 
+            cr.update(Imps.AccountStatus.CONTENT_URI, values, null, null);
+        }
+        catch (Exception e)
+        {
+            //this can throw NPE on restart sometimes if database has not been unlocked
+            debug("database is not unlocked yet. caught NPE from mDbHelper in ImpsProvider");
+        }
+    }
+
 
     private void autoLogin() {
         
@@ -637,8 +662,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
 
         @Override
         public IOtrKeyManager getOtrKeyManager(String accountId) throws RemoteException {
-
-            return new OtrKeyManagerAdapter(mOtrChatManager.getKeyManager(), null, accountId);
+            return new OtrKeyManagerAdapter(mOtrChatManager, null, accountId);
         }
         
         public void setKillProcessOnStop (boolean killProcessOnStop)

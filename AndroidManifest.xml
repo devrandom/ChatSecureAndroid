@@ -1,20 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="info.guardianproject.otr.app.im"
-    android:installLocation="auto"
     android:sharedUserLabel="@string/perm_label"
-    android:versionCode="63"
-    android:versionName="0.0.12-alpha-2" >
-
+     android:versionName="0.0.12-alpha-3-UI"
+     android:versionCode="64"
+     android:installLocation="auto"     
+     >     
     <supports-screens
-        android:anyDensity="true"
-        android:largeScreens="true"
-        android:normalScreens="true"
-        android:smallScreens="true" />
-
-    <uses-sdk
-        android:minSdkVersion="8"
-        android:targetSdkVersion="18" />
+android:smallScreens="true"
+android:normalScreens="true"
+android:largeScreens="true"
+android:anyDensity="true"
+/>
+    <uses-sdk android:minSdkVersion="9" android:targetSdkVersion="18" />
 
     <uses-permission android:name="info.guardianproject.otr.app.providers.imps.permission.READ_ONLY" />
     <uses-permission android:name="info.guardianproject.otr.app.providers.imps.permission.WRITE_ONLY" />
@@ -50,63 +48,71 @@
         android:protectionLevel="dangerous" />
     <permission
         android:name="info.guardianproject.otr.app.providers.imps.permission.WRITE_ONLY"
-        android:description="@string/wo_perm_desc"
         android:label="@string/wo_perm_label"
-        android:permissionGroup="android.permission-group.MESSAGES"
-        android:protectionLevel="dangerous" />
+        android:description="@string/wo_perm_desc" />
 
-    <application
-        android:name="info.guardianproject.otr.app.im.app.ImApp"
-        android:allowBackup="false"
-        android:icon="@drawable/ic_launcher_chatsecure"
-        android:label="@string/im_label"
-        android:largeHeap="true"
-        android:theme="@style/Theme.Gibberbot.Light" >
-
-<!--                      android:taskAffinity="info.guardianproject.otr.app.task.im"  -->
-
-        <activity android:name="info.guardianproject.otr.app.im.app.WelcomeActivity" >
-            <intent-filter>
+    <application android:name=".app.ImApp"
+             android:label="@string/im_label"
+             android:icon="@drawable/ic_launcher_chatsecure"
+             android:theme="@style/Theme.Sherlock.Light"
+             android:allowBackup="false"
+			>
+        <!-- 	
+                     android:taskAffinity="info.guardianproject.otr.app.task.im" 
+        
+     		  -->
+     		  
+         <activity android:name=".app.WelcomeActivity"
+         	>
+            
+              <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="file" />
-                <data android:mimeType="*/*" />
-                <data android:pathPattern=".*\\.ofcaes" />
-                <data android:host="*" />
-            </intent-filter>
-        </activity>
-        <activity
-            android:name="info.guardianproject.otr.app.im.app.ChatListActivity"
-            android:exported="false"
-            android:windowSoftInputMode="stateHidden|adjustResize" />
-        <activity
-            android:name="info.guardianproject.otr.app.im.app.ActiveChatListView"
-            android:exported="false" />
-        <activity
-            android:name="info.guardianproject.otr.app.im.ui.AboutActivity"
-            android:exported="false" />
-        <activity
-            android:name="info.guardianproject.otr.app.im.ui.AccountWizardActivity"
-            android:exported="false" />
-        <activity
-            android:name="info.guardianproject.otr.app.im.ui.AppPassphraseActivity"
-            android:exported="false" />
-        <activity
-            android:name="info.guardianproject.otr.app.im.ui.SettingsActivity"
-            android:exported="false" />
-
-        <service
-            android:name="info.guardianproject.otr.app.im.plugin.xmpp.XmppImPlugin"
-            android:exported="false"
-            android:process=":remote" >
+             <intent-filter>
+			        <action android:name="android.intent.action.VIEW" />
+			        <category android:name="android.intent.category.DEFAULT" />
+			        <category android:name="android.intent.category.BROWSABLE" />
+			        <data android:scheme="file" />
+			        <data android:mimeType="*/*" />
+			        <data android:pathPattern=".*\\.ofcaes" />
+			        <data android:host="*" />
+			    </intent-filter>
+			         
+             </activity>
+        
+        <activity android:name=".app.ActiveChatListView"
+                          android:exported="false"
+            
+            />
+        
+        
+        
+        <activity android:name=".ui.AboutActivity"
+                          android:exported="false"
+            
+         	/>
+        <activity android:name=".ui.AccountWizardActivity"
+                          android:exported="false"
+            
+            />
+        
+        <activity android:name=".ui.AppPassphraseActivity"
+                          android:exported="false"
+            
+         	
+            />
+         <activity android:name=".ui.SettingsActivity"
+         	              android:exported="false"
+         	
+             />
+        
+        
+        <service android:name=".plugin.xmpp.XmppImPlugin"
+               android:exported="false"
+               android:process=":remote"
+        	>
             <intent-filter>
                 <action android:name="info.guardianproject.otr.app.im.plugin" />
             </intent-filter>
@@ -189,28 +195,7 @@
             android:exported="false" >
         </activity>
 
-        <!--
-        <activity android:name=".app.ImUrlActivity" >
-            <intent-filter>
-                <action android:name="android.intent.action.SENDTO" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="info.guardianproject.otr.app.im.category.AIM" />
-                <category android:name="info.guardianproject.otr.app.im.category.MSN" />
-                <category android:name="info.guardianproject.otr.app.im.category.YAHOO" />
-                <data android:scheme="im" />
-            </intent-filter>
-
-            <intent-filter>
-                <action android:name="android.intent.action.SENDTO" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="imto" android:host="aim"/>
-                <data android:scheme="imto" android:host="yahoo"/>
-                <data android:scheme="imto" android:host="msn"/>
-            </intent-filter>
-        </activity>
-        -->
-        <activity
-            android:name="info.guardianproject.otr.app.im.app.AccountListActivity"
+        <activity android:name="info.guardianproject.otr.app.im.app.AccountListActivity"
             android:exported="false"
             android:launchMode="singleTop" >
             <intent-filter>
@@ -414,13 +399,12 @@
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:label="@string/title_activity_lock_screen" >
         </activity>
-
-        <service
-            android:name="info.guardianproject.cacheword.CacheWordService"
-            android:enabled="true"
-            android:exported="false" />
-
+          
+        <service android:name="info.guardianproject.cacheword.CacheWordService" android:enabled="true" android:exported="false"
+             />
+          
         <activity android:name="net.hockeyapp.android.UpdateActivity" />
     </application>
 
 </manifest>
+
