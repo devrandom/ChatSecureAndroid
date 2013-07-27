@@ -565,6 +565,13 @@ public class ChatView extends LinearLayout {
                 sendMessage();
             }
         });
+        mSendButton.setOnLongClickListener(new OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                beSocial();
+                return true;
+            }
+        });
     }
 
     /*
