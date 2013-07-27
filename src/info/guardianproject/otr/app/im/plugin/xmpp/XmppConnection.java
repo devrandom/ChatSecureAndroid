@@ -2059,12 +2059,6 @@ public class XmppConnection extends ImConnection implements CallbackHandler {
                     mConnection.connect(false);
                     //initServiceDiscovery();
                 } else {
-                    
-                    mConnection.disconnect();
-                    mConnection = null;
-                    
-                    do_login();
-                    /*
                     debug(TAG, "no resume");
                     mConnection.connect();
 
@@ -2073,8 +2067,8 @@ public class XmppConnection extends ImConnection implements CallbackHandler {
                         // It can also happen if auth exception was swallowed by smack.
                         // Try to login manually.
 
-      //                  Log.e(TAG, "authentication did not happen in connect() - login manually");
-    //                    mConnection.login(mUsername, mPassword, mResource);
+                        Log.e(TAG, "authentication did not happen in connect() - login manually");
+                        mConnection.login(mUsername, mPassword, mResource);
                         
                         // Make sure
                         if (!mConnection.isAuthenticated())
@@ -2087,7 +2081,6 @@ public class XmppConnection extends ImConnection implements CallbackHandler {
                     mStreamHandler.notifyInitialLogin();
                     initServiceDiscovery();
                     sendPresencePacket();
-                    */
                 }
             } catch (Exception e) {
                 mStreamHandler.quickShutdown();
