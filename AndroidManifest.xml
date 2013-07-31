@@ -2,8 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="info.guardianproject.otr.app.im"
     android:sharedUserLabel="@string/perm_label"
-     android:versionName="0.0.12-alpha-3-UI"
-     android:versionCode="64"
+     android:versionName="12.0.5"
+     android:versionCode="66"
      android:installLocation="auto"     
      >     
     <supports-screens
@@ -54,14 +54,9 @@ android:anyDensity="true"
     <application android:name=".app.ImApp"
              android:label="@string/im_label"
              android:icon="@drawable/ic_launcher_chatsecure"
-             android:theme="@style/Theme.Sherlock.Light"
+             android:theme="@style/AppTheme"
              android:allowBackup="false"
 			>
-        <!-- 	
-                     android:taskAffinity="info.guardianproject.otr.app.task.im" 
-        
-     		  -->
-     		  
          <activity android:name=".app.WelcomeActivity"
          	>
             

@@ -251,9 +251,9 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
             showAccounts();
         } else if (countSignedIn >= 1) {
             showActiveAccount();
-        } else if (countConfigured > 0) {
+        } else {
             showAccounts();
-        }
+        }/*
         else
         {
             setContentView(R.layout.welcome_activity);
@@ -270,7 +270,7 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
             });
 
             
-        }
+        }*/
     
     }
     

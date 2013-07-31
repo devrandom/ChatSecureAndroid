@@ -189,8 +189,9 @@ public class ChatPagerAdapter extends FragmentStatePagerAdapter {
 
         mAdapter.notifyDataSetChanged();
         
-        mProviderId = -1;
-        mAccountId = -1;
+        //mProviderId = -1;
+        //mAccountId = -1;
+        
         startQueryOngoingConversations();
    
        
@@ -583,21 +584,6 @@ public class ChatPagerAdapter extends FragmentStatePagerAdapter {
         long mChatId;
         ChatView mChatView;
         /**
-         * Create a new instance of CountingFragment, providing "num"
-         * as an argument.
-         */
-        static ChatViewFragment newInstance(long chatId) {
-            ChatViewFragment f = new ChatViewFragment();
-
-            // Supply num input as an argument.
-            Bundle args = new Bundle();
-            args.putLong("chatId", chatId);
-            f.setArguments(args);
-
-            return f;
-        }
-
-        /**
          * When creating, retrieve this instance's number from its arguments.
          */
         @Override
@@ -623,7 +609,8 @@ public class ChatPagerAdapter extends FragmentStatePagerAdapter {
         @Override
         public void onActivityCreated(Bundle savedInstanceState) {
             super.onActivityCreated(savedInstanceState);
-           
+         
+            
         }
 
     }

@@ -21,6 +21,13 @@ the following as existing Android projects
     * external/ActionBarSherlock/library (rename project to ActionBarSherlock)
     * external/OnionKit/library (rename project to OnionKit)
     * external/MemorizingTrustManager (uncheck the example project and rename the remaining project to MemorizingTrustManager)
+    * AndroidPinning
+    * cacheword
+    * MessageBar
+    * NineOldAndroids
+    * ShowcaseView (add NineOldAndroids to build path projects)
+    * SlideListView
+    * SlidingMenu
 
 2. Import Gibberbot itself like #1 above
     
