@@ -160,7 +160,6 @@ android:anyDensity="true"
         <service
             android:name="info.guardianproject.otr.app.im.service.RemoteImService"
             android:exported="true"
-            android:permission="info.guardianproject.otr.app.im.permission.IM_SERVICE"
             android:process=":remote" >
             <intent-filter>
                 <action android:name="info.guardianproject.otr.app.im.IRemoteImService" />

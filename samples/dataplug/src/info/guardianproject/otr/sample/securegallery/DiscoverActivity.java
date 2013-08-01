@@ -24,14 +24,23 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Toast;
 
 /**
  * @author liorsaar
  */
 public class DiscoverActivity extends Activity {
+	
+	public static final String TAG = DiscoverActivity.class.getSimpleName() ;
 
+	/**
+	 * 
+	 */
+	private static final String URI_GALLERY = "chatsecure:/gallery/";
 	private static final int REQUEST_CODE_GALLERY_LISTING = 6661;
+
+	private Bundle mRequestToLocalExtras; // TODO create a map, keyed by requestID
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -49,6 +58,7 @@ public class DiscoverActivity extends Activity {
 
 	private void handleIntent(Intent aIntent) throws JSONException, IOException {
 		String zAction = aIntent.getAction();
+		Log.e(TAG, "handleIntent: "+zAction ) ;
 		if( zAction == null ) {
 			return ;
 		}
@@ -73,21 +83,33 @@ public class DiscoverActivity extends Activity {
 		}
 		Toast.makeText(this, "Error: unknown action " + zAction, Toast.LENGTH_LONG).show();
 	}
+	
+	/*
+	 * Alice - initiator - the side that hit the ui first
+	 * Bob - recieved - in doRequestToLocal - responds with json
+	 */
 	private void doRequestToLocal(Intent aIntent) throws JSONException {
-		String zRequest = aIntent.getStringExtra( Api.EXTRA_REQUEST );
-		if( zRequest == null ) {
-			Toast.makeText(this, "Error: RequestToLocal: request=null", Toast.LENGTH_LONG).show();
+		// look at EXTRA_URI - /gallery/activate
+		String zUri = aIntent.getStringExtra( Api.EXTRA_URI );
+		if( zUri == null ) {
+			Toast.makeText(this, "Error: RequestToLocal: uri=null", Toast.LENGTH_LONG).show();
+			return ; // TODO error
 		}
-		if( Api.REQUEST_GALLERY_LISTING.equals( zRequest ) ) {
-			doRequestGalleryListing( this ) ;
+		if( zUri.equals( URI_GALLERY )) {
+			// repond with : accountid, friendid, requiestid, body(json)
+			mRequestToLocalExtras = aIntent.getExtras() ;
+			doRequestGallery( this ) ;
+			return ;
 		}
+		Toast.makeText(this, "Error: Invalid URI: "+ zUri, Toast.LENGTH_LONG).show();
+		Log.e(TAG, "Error: Invalid URI: "+ zUri ) ;
 	}
 	
 	/**
 	 * @param aActivity 
 	 * 
 	 */
-	private void doRequestGalleryListing(Activity aActivity) {
+	private void doRequestGallery(Activity aActivity) {
 		Intent zIntent = new Intent(Intent.ACTION_PICK);
 		zIntent.setType("image/*");
 		aActivity.startActivityForResult(zIntent, REQUEST_CODE_GALLERY_LISTING );		
@@ -95,6 +117,7 @@ public class DiscoverActivity extends Activity {
 
 	private void doDiscover(Intent aIntent) throws JSONException {
 		String token = aIntent.getStringExtra( Api.EXTRA_TOKEN );
+		Log.e(TAG, "doDiscover: token:"+token ) ;
 		if( token != null ) {
 			Toast.makeText(this, "Discover: token="+token, Toast.LENGTH_LONG).show();
 			sendRegistration( token ) ;
@@ -106,6 +129,7 @@ public class DiscoverActivity extends Activity {
 	}
 
 	private void sendRegistration(String token) throws JSONException {
+		Log.e(TAG, "sendRegistration:"+REGISTRATION ) ;
 		Intent zIntent = new Intent();
 		zIntent.setAction(Api.ACTION_REGISTER) ;
 		zIntent.putExtra( Api.EXTRA_TOKEN , token ) ;
@@ -134,7 +158,7 @@ public class DiscoverActivity extends Activity {
 		Intent zIntent = new Intent();
 		zIntent.setAction(Api.ACTION_REQUEST) ;
 		zIntent.putExtra( Api.EXTRA_METHOD , "GET" ) ;
-		zIntent.putExtra( Api.EXTRA_URI , "chatsecure:/gallery/activate" ) ;
+		zIntent.putExtra( Api.EXTRA_URI , URI_GALLERY ) ;
 		zIntent.putExtra( Api.EXTRA_ACCOUNT_ID , aAccountId ) ;
 		zIntent.putExtra( Api.EXTRA_FRIEND_ID , aFriendId ) ;
 		zIntent.putExtra( Api.EXTRA_REQUEST_ID , aRequestId ) ;
@@ -146,6 +170,7 @@ public class DiscoverActivity extends Activity {
 		String zRequestId = aIntent.getStringExtra(Api.EXTRA_REQUEST_ID);
 		String zContent = aIntent.getStringExtra(Api.EXTRA_CONTENT);
 		if( ! sRequestId.equals(zRequestId) ) {
+			Log.e(TAG, "Request id mismatch: " + zRequestId ) ;
 			Toast.makeText(this, "Request id mismatch: " + zRequestId, Toast.LENGTH_LONG).show();
 			return ;
 		}
@@ -154,8 +179,9 @@ public class DiscoverActivity extends Activity {
 	}
 	
 	private void launch(String aFriendId, String aContent) {
+		Log.e(TAG, "launch: " + aFriendId + " " + aContent ) ;
 		// TODO your code here !!!
-		Toast.makeText(this, "Launch !!!" + aFriendId, Toast.LENGTH_LONG).show();
+		Toast.makeText(this, "Launch !!!" + aFriendId +":"+aContent, Toast.LENGTH_LONG).show();
 	}
 
 	@Override
@@ -173,7 +199,7 @@ public class DiscoverActivity extends Activity {
 			break ;
 		default:
 			Toast.makeText(this, "ERROR: requestCode unknown: " + requestCode, Toast.LENGTH_LONG).show();
-		}	
+		}
 	}
 
 	private String getGalleryListing(String aUri) {
@@ -191,9 +217,12 @@ public class DiscoverActivity extends Activity {
 	 * @param string
 	 */
 	private void sendResponseFromLocal(String aRequest, String aContent) {
+		// repond with : accountid, friendid, requiestid, body(json)
 		Intent zIntent = new Intent();
 		zIntent.setAction(Api.ACTION_RESPONSE_FROM_LOCAL) ;
-		zIntent.putExtra( Api.EXTRA_REQUEST , aRequest ) ;
+		zIntent.putExtra( Api.EXTRA_ACCOUNT_ID , mRequestToLocalExtras.getString(Api.EXTRA_ACCOUNT_ID) ) ;
+		zIntent.putExtra( Api.EXTRA_FRIEND_ID , mRequestToLocalExtras.getString(Api.EXTRA_FRIEND_ID) ) ;
+		zIntent.putExtra( Api.EXTRA_REQUEST_ID , mRequestToLocalExtras.getString(Api.EXTRA_REQUEST_ID) ) ;
 		zIntent.putExtra( Api.EXTRA_CONTENT, aContent ) ;
 		startService( zIntent ) ;
 		finish() ;
