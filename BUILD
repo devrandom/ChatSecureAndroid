@@ -14,7 +14,9 @@ Follow the steps from the prep section, then:
 == Eclipse
 
 First, follow the above instructions in the Preparation section.  Then, import
-the following as existing Android projects
+the following as existing Android projects.
+
+You might also want to turn off automated builds while doing these imports to prevent Eclipse internal errors.
 
 1. File --> Import... --> Android --> Existing Android Code Into Workspace
 
