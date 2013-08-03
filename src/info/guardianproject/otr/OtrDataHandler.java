@@ -213,7 +213,7 @@ public class OtrDataHandler implements DataHandler {
             byte[] body = byteBuffer.toByteArray();
             Log.i(TAG, "Sent sha1 is " + sha1sum(body));
             sendResponse(us, 200, "OK", uid, body);
-        } else {
+        } else if (url.startsWith("chatsecure:")) {
             ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
             try {
                 readIntoByteBuffer(byteBuffer, inBuf);
@@ -231,9 +231,12 @@ public class OtrDataHandler implements DataHandler {
             }
             if (mDataListener.onIncomingRequest(requestMethod, url, uid, headers.toString(), byteBuffer.toByteArray())) {
             } else {
-                Log.w(TAG, "Unknown method " + requestMethod);
+                Log.w(TAG, "Unknown method/url " + requestMethod + " " + url);
                 sendResponse(us, 404, "Not found", uid, EMPTY_BODY);
             }
+        } else {
+            Log.w(TAG, "Unknown scheme " + url);
+            sendResponse(us, 404, "Not found", uid, EMPTY_BODY);
         }
     }
 
@@ -305,8 +308,7 @@ public class OtrDataHandler implements DataHandler {
         String uid = res.getFirstHeader("Request-Id").getValue();
         Request request = requestCache.getIfPresent(uid);
         if (request == null) {
-            Log.w(TAG, "Unknown request ID " + uid);
-            return;
+            Log.w(TAG, "Unknown response " + uid);
         }
 
         if (request.isSeen()) {
@@ -327,7 +329,7 @@ public class OtrDataHandler implements DataHandler {
             ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
             readIntoByteBuffer(byteBuffer, buffer);
             Log.i(TAG, "Received sha1 @" + request.start + " is " + sha1sum(byteBuffer.toByteArray()));
-            if (request.method.equals("GET")) {
+            if (request.method.equals("GET") && request.url.startsWith("in-band-otr:")) {
                 Transfer transfer = transferCache.getIfPresent(request.url);
                 if (transfer == null) {
                     Log.w(TAG, "Transfer expired for url " + request.url);
@@ -356,6 +358,20 @@ public class OtrDataHandler implements DataHandler {
                             ((float)transfer.chunksReceived) / transfer.chunks);
                     transfer.perform();
                     Log.i(TAG, "Progress " + transfer.chunksReceived + " / " + transfer.chunks);
+                }
+            } else if (request.url.startsWith("chatsecure:")) {
+                StringBuffer headers = new StringBuffer();
+                HeaderIterator iter = res.headerIterator();
+                while (iter.hasNext()) {
+                    Header header = iter.nextHeader();
+                    headers.append(header.getName());
+                    headers.append(": ");
+                    headers.append(header.getValue());
+                    headers.append("\n");
+                }
+                if (mDataListener.onIncomingResponse(request.url, uid, headers.toString(), byteBuffer.toByteArray())) {
+                } else {
+                    Log.e(TAG, "Unknown RESPONSE method/url " + request.method + " " + request.url);
                 }
             }
         } catch (IOException e) {

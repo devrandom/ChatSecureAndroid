@@ -89,6 +89,7 @@ public class DataPlugger {
         requestIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         requestIntent.putExtra(Api.EXTRA_METHOD, request.getMethod());
         requestIntent.putExtra(Api.EXTRA_URI, request.getUri());
+        requestIntent.putExtra(Api.EXTRA_ACCOUNT_ID, request.getAccountId());
         requestIntent.putExtra(Api.EXTRA_FRIEND_ID, request.getFriendId());
         requestIntent.putExtra(Api.EXTRA_REQUEST_ID, request.getRequestId());
         requestIntent.putExtra(Api.EXTRA_HEADERS, request.getHeaders());
