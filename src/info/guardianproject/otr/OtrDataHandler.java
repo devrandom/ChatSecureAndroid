@@ -145,6 +145,7 @@ public class OtrDataHandler implements DataHandler {
         String uid = req.getFirstHeader("Request-Id").getValue();
 
         String url = req.getRequestLine().getUri();
+        Log.i(TAG, "incoming request " + requestMethod + " " + url);
 
         if (requestMethod.equals("OFFER") && url.startsWith("otr-in-band:")) {
             Log.i(TAG, "incoming OFFER");

@@ -578,6 +578,8 @@ class AuthContextImpl implements AuthContext {
             return;
         }
 
+        setIsSecure(false);
+
         switch (this.getAuthenticationState()) {
         case AWAITING_DHKEY:
             // Reply with a Reveal Signature Message and transition
@@ -618,6 +620,8 @@ class AuthContextImpl implements AuthContext {
             logger.finest("ALLOW_V2 is not set, ignore this message.");
             return;
         }
+
+        setIsSecure(false);
 
         switch (this.getAuthenticationState()) {
         case NONE:
