@@ -47,8 +47,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import com.google.common.collect.Lists;
-
 import net.java.otr4j.session.SessionStatus;
 import android.annotation.TargetApi;
 import android.app.Activity;
@@ -101,7 +99,6 @@ import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.CompoundButton;
-import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.CursorAdapter;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -479,16 +476,12 @@ public class ChatView extends LinearLayout {
 
         });
         
-        mOtrSwitch.setOnCheckedChangeListener(new OnCheckedChangeListener()
-        {
-
+        mOtrSwitch.setOnClickListener(new OnClickListener() {
+            
             @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                mActivity.switchOtrState(ChatView.this,isChecked);
-                
+            public void onClick(View view) {
+                mActivity.switchOtrState(ChatView.this, mOtrSwitch.isChecked());
             }
-            
-            
         });
        
         /*
