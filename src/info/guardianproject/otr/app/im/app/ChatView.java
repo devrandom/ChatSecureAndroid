@@ -901,6 +901,9 @@ public class ChatView extends LinearLayout {
     }
 
     private void startQuery(long chatId) {
+        // return if we are not looking at a chat
+        if (chatId < 0)
+            return;
         if (mQueryHandler == null) {
             mQueryHandler = new QueryHandler(mContext);
         } else {
@@ -1234,7 +1237,7 @@ public class ChatView extends LinearLayout {
     void updateWarningView() {
         int visibility = View.GONE;
         int iconVisibility = View.GONE;
-        String message = null;
+        String message = "";
         boolean isConnected;
 
         SessionStatus sessionStatus = null;
@@ -1276,15 +1279,7 @@ public class ChatView extends LinearLayout {
 
             }
 
-            if (mPresenceStatus == Imps.Presence.OFFLINE)
-            {
-                mWarningText.setTextColor(Color.WHITE);
-                mStatusWarningView.setBackgroundColor(Color.DKGRAY);
-                message = mContext.getString(R.string.presence_offline);
-                mOtrSwitch.setChecked(false);
-                
-            }
-            else if (sessionStatus == SessionStatus.ENCRYPTED) {
+            if (sessionStatus == SessionStatus.ENCRYPTED) {
                 try {
 
                     if (mOtrKeyManager == null)
@@ -1354,6 +1349,14 @@ public class ChatView extends LinearLayout {
             mWarningText.setBackgroundColor(Color.DKGRAY);
             message = mContext.getString(R.string.disconnected_warning);
             
+        }
+        
+        if (mPresenceStatus == Imps.Presence.OFFLINE)
+        {
+            if (!message.equals("")) {
+                message = ", " + message;
+            }
+            message = mContext.getString(R.string.presence_offline) + message;
         }
         
         mStatusWarningView.setVisibility(visibility);
