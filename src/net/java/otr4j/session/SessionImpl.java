@@ -329,6 +329,10 @@ public class SessionImpl implements Session {
             if (auth.getIsSecure()) {
                 this.setSessionStatus(SessionStatus.ENCRYPTED);
                 logger.finest("Gone Secure.");
+            } else if (getSessionStatus() == SessionStatus.ENCRYPTED) {
+                // Peer is re-authenticating.  Assume that OTR state has been lost.
+                setSessionStatus(SessionStatus.FINISHED);
+                logger.finest("Lost OTR state.");
             }
             return null;
         default:

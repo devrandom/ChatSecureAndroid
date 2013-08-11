@@ -19,4 +19,7 @@ public interface DataListener {
     /** A request came in */
     boolean onIncomingRequest(String requestMethod, String url, String requestId,
             String headers, byte[] body);
+
+    /** A response came in */
+    boolean onIncomingResponse(String url, String requestId, String headers, byte[] body);
 }

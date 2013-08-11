@@ -47,8 +47,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import com.google.common.collect.Lists;
-
 import net.java.otr4j.session.SessionStatus;
 import android.annotation.TargetApi;
 import android.app.Activity;
@@ -101,7 +99,6 @@ import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.CompoundButton;
-import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.CursorAdapter;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -479,16 +476,12 @@ public class ChatView extends LinearLayout {
 
         });
         
-        mOtrSwitch.setOnCheckedChangeListener(new OnCheckedChangeListener()
-        {
-
+        mOtrSwitch.setOnClickListener(new OnClickListener() {
+            
             @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                mActivity.switchOtrState(ChatView.this,isChecked);
-                
+            public void onClick(View view) {
+                mActivity.switchOtrState(ChatView.this, mOtrSwitch.isChecked());
             }
-            
-            
         });
        
         /*
@@ -901,6 +894,9 @@ public class ChatView extends LinearLayout {
     }
 
     private void startQuery(long chatId) {
+        // return if we are not looking at a chat
+        if (chatId < 0)
+            return;
         if (mQueryHandler == null) {
             mQueryHandler = new QueryHandler(mContext);
         } else {
@@ -1234,7 +1230,7 @@ public class ChatView extends LinearLayout {
     void updateWarningView() {
         int visibility = View.GONE;
         int iconVisibility = View.GONE;
-        String message = null;
+        String message = "";
         boolean isConnected;
 
         SessionStatus sessionStatus = null;
@@ -1276,15 +1272,7 @@ public class ChatView extends LinearLayout {
 
             }
 
-            if (mPresenceStatus == Imps.Presence.OFFLINE)
-            {
-                mWarningText.setTextColor(Color.WHITE);
-                mStatusWarningView.setBackgroundColor(Color.DKGRAY);
-                message = mContext.getString(R.string.presence_offline);
-                mOtrSwitch.setChecked(false);
-                
-            }
-            else if (sessionStatus == SessionStatus.ENCRYPTED) {
+            if (sessionStatus == SessionStatus.ENCRYPTED) {
                 try {
 
                     if (mOtrKeyManager == null)
@@ -1354,6 +1342,14 @@ public class ChatView extends LinearLayout {
             mWarningText.setBackgroundColor(Color.DKGRAY);
             message = mContext.getString(R.string.disconnected_warning);
             
+        }
+        
+        if (mPresenceStatus == Imps.Presence.OFFLINE)
+        {
+            if (!message.equals("")) {
+                message = ", " + message;
+            }
+            message = mContext.getString(R.string.presence_offline) + message;
         }
         
         mStatusWarningView.setVisibility(visibility);

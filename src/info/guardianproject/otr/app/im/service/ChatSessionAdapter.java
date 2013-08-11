@@ -28,6 +28,7 @@ import info.guardianproject.otr.app.im.IChatListener;
 import info.guardianproject.otr.app.im.dataplug.Descriptor;
 import info.guardianproject.otr.app.im.dataplug.Discoverer;
 import info.guardianproject.otr.app.im.dataplug.PluggerRequest;
+import info.guardianproject.otr.app.im.dataplug.PluggerResponse;
 import info.guardianproject.otr.app.im.engine.Address;
 import info.guardianproject.otr.app.im.engine.ChatGroup;
 import info.guardianproject.otr.app.im.engine.ChatGroupManager;
@@ -621,18 +622,18 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
         }
 
         @Override
-        public boolean onIncomingRequest(String requestMethod, String url, String uid, String headers, byte[] body) {
-            if (requestMethod.equals("POST") && url.equals("/discover")) {
+        public boolean onIncomingRequest(String requestMethod, String url, String requestId, String headers, byte[] body) {
+            if (requestMethod.equals("POST") && url.equals("chatsecure:/discover")) {
                 try {
                     mRemotePluginDescriptors = Discoverer.parseDiscoveryPayload(new String(body, "UTF-8"));
                 } catch (UnsupportedEncodingException e) {
-                    mDataHandler.sendDataResponse(mLocalUser, 400, "Bad UTF-8", uid, null);
+                    mDataHandler.sendDataResponse(mLocalUser, 400, "Bad UTF-8", requestId, null);
                     return true;
                 } catch (JSONException e) {
-                    mDataHandler.sendDataResponse(mLocalUser, 400, "Bad JSON", uid, null);
+                    mDataHandler.sendDataResponse(mLocalUser, 400, "Bad JSON", requestId, null);
                     return true;
                 }
-                mDataHandler.sendDataResponse(mLocalUser, 200, "OK", uid, null);
+                mDataHandler.sendDataResponse(mLocalUser, 200, "OK", requestId, null);
                 return true;
             } else {
                 PluggerRequest request = new PluggerRequest();
@@ -642,8 +643,21 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
                 request.setFriendId(getAddress());
                 request.setContent(body);
                 request.setHeaders(headers);
+                request.setRequestId(requestId);
                 return service.getDataPlugger().sendRequestToLocal(request);
             }
+        }
+
+        @Override
+        public boolean onIncomingResponse(String uri, String requestId, String headers, byte[] body) {
+            PluggerResponse response = new PluggerResponse();
+            response.setUri(uri);
+            response.setAccountId(mLocalUser.getAddress());
+            response.setFriendId(getAddress());
+            response.setContent(body);
+            response.setHeaders(headers);
+            response.setRequestId(requestId);
+            return service.getDataPlugger().sendResponseToLocal(response);
         }
     }
     
@@ -805,7 +819,7 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
             try {
                 if (mOtrChatSession.isChatEncrypted()) {
                     String discovery = Discoverer.getInstance(service).getDiscoveryPayload();
-                    mDataHandler.sendDataRequest(mLocalUser, "POST", "/discover", "disco", null, discovery.getBytes());
+                    mDataHandler.sendDataRequest(mLocalUser, "POST", "chatsecure:/discover", "disco", null, discovery.getBytes());
                 }
             } catch (RemoteException e) {
                 throw new RuntimeException(e);
