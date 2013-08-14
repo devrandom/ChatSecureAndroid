@@ -25,6 +25,7 @@ import info.guardianproject.otr.OtrChatSessionAdapter;
 import info.guardianproject.otr.OtrDataHandler;
 import info.guardianproject.otr.OtrKeyManagerAdapter;
 import info.guardianproject.otr.app.im.IChatListener;
+import info.guardianproject.otr.app.im.dataplug.Api;
 import info.guardianproject.otr.app.im.dataplug.Descriptor;
 import info.guardianproject.otr.app.im.dataplug.Discoverer;
 import info.guardianproject.otr.app.im.dataplug.PluggerRequest;
@@ -45,6 +46,7 @@ import info.guardianproject.otr.app.im.engine.Message;
 import info.guardianproject.otr.app.im.engine.MessageListener;
 import info.guardianproject.otr.app.im.engine.Presence;
 import info.guardianproject.otr.app.im.provider.Imps;
+import info.guardianproject.util.Debug;
 import info.guardianproject.util.SystemServices;
 
 import java.io.File;
@@ -68,6 +70,7 @@ import android.os.Environment;
 import android.os.RemoteCallbackList;
 import android.os.RemoteException;
 import android.provider.BaseColumns;
+import android.util.Log;
 
 public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSession.Stub {
 
@@ -622,8 +625,8 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
         }
 
         @Override
-        public boolean onIncomingRequest(String requestMethod, String url, String requestId, String headers, byte[] body) {
-            if (requestMethod.equals("POST") && url.equals("chatsecure:/discover")) {
+        public boolean onIncomingRequest(String requestMethod, String uri, String requestId, String headers, byte[] body) {
+            if (requestMethod.equals("POST") && uri.equals("chatsecure:/discover")) {
                 try {
                     mRemotePluginDescriptors = Discoverer.parseDiscoveryPayload(new String(body, "UTF-8"));
                 } catch (UnsupportedEncodingException e) {
@@ -638,12 +641,14 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
             } else {
                 PluggerRequest request = new PluggerRequest();
                 request.setMethod(requestMethod);
-                request.setUri(url);
+                request.setUri(uri);
                 request.setAccountId(mLocalUser.getAddress());
                 request.setFriendId(getAddress());
                 request.setContent(body);
                 request.setHeaders(headers);
                 request.setRequestId(requestId);
+                if (Debug.DEBUG_ENABLED)
+                    Log.d(Api.DATAPLUG_TAG, "request " + request.getFriendId() + " -> local for " + uri);
                 return service.getDataPlugger().sendRequestToLocal(request);
             }
         }
@@ -657,6 +662,8 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
             response.setContent(body);
             response.setHeaders(headers);
             response.setRequestId(requestId);
+            if (Debug.DEBUG_ENABLED)
+                Log.d(Api.DATAPLUG_TAG, "response " + response.getFriendId() + " -> local for " + uri);
             return service.getDataPlugger().sendResponseToLocal(response);
         }
     }

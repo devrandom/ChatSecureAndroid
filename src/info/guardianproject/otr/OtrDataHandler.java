@@ -1,10 +1,12 @@
 package info.guardianproject.otr;
 
+import info.guardianproject.otr.app.im.dataplug.Api;
 import info.guardianproject.otr.app.im.engine.Address;
 import info.guardianproject.otr.app.im.engine.ChatSession;
 import info.guardianproject.otr.app.im.engine.DataHandler;
 import info.guardianproject.otr.app.im.engine.DataListener;
 import info.guardianproject.otr.app.im.engine.Message;
+import info.guardianproject.util.Debug;
 import info.guardianproject.util.SystemServices;
 
 import java.io.ByteArrayInputStream;
@@ -145,7 +147,8 @@ public class OtrDataHandler implements DataHandler {
         String uid = req.getFirstHeader("Request-Id").getValue();
 
         String url = req.getRequestLine().getUri();
-        Log.i(TAG, "incoming request " + requestMethod + " " + url);
+        if (Debug.DEBUG_ENABLED)
+            Log.d(Api.DATAPLUG_TAG, "receive request " + requestMethod + " " + url);
 
         if (requestMethod.equals("OFFER") && url.startsWith("otr-in-band:")) {
             Log.i(TAG, "incoming OFFER");
@@ -232,7 +235,7 @@ public class OtrDataHandler implements DataHandler {
             }
             if (mDataListener.onIncomingRequest(requestMethod, url, uid, headers.toString(), byteBuffer.toByteArray())) {
             } else {
-                Log.w(TAG, "Unknown method/url " + requestMethod + " " + url);
+                Log.w(Api.DATAPLUG_TAG, "Unknown method/url " + requestMethod + " " + url);
                 sendResponse(us, 404, "Not found", uid, EMPTY_BODY);
             }
         } else {
@@ -289,7 +292,8 @@ public class OtrDataHandler implements DataHandler {
         byte[] data = outBuf.getOutput();
         Message message = new Message("");
         message.setFrom(us);
-        Log.i(TAG, "send response");
+        if (Debug.DEBUG_ENABLED)
+            Log.d(Api.DATAPLUG_TAG, "transmit response");
         mChatSession.sendDataAsync(message, true, data);
     }
 
@@ -311,6 +315,9 @@ public class OtrDataHandler implements DataHandler {
         if (request == null) {
             Log.w(TAG, "Unknown response " + uid);
         }
+
+        if (Debug.DEBUG_ENABLED)
+            Log.d(Api.DATAPLUG_TAG, "receive response for " + request.url);
 
         if (request.isSeen()) {
             Log.w(TAG, "Already seen request ID " + uid);

@@ -275,7 +275,8 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
                 String requestId = intent.getExtras().getString(Api.EXTRA_REQUEST_ID);
                 String headers = intent.getExtras().getString(Api.EXTRA_HEADERS);
                 String content = intent.getExtras().getString(Api.EXTRA_CONTENT);
-                Log.d(Api.DATAPLUG_TAG, "Got request @" +friendId + ": " + method + " " + uri);
+                if (Debug.DEBUG_ENABLED)
+                    Log.d(Api.DATAPLUG_TAG, "request local -> " + friendId + ": " + method + " " + uri);
                 
                 if (friendId == null || accountId == null || requestId == null || method == null || uri == null) {
                     Log.e(Api.DATAPLUG_TAG, "missing mandatory requeset parameter (friendId, accountId, requestId, method, uri)");
@@ -300,6 +301,8 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
                 String headers = intent.getExtras().getString(Api.EXTRA_HEADERS);
                 String content = intent.getExtras().getString(Api.EXTRA_CONTENT);
 
+                if (Debug.DEBUG_ENABLED)
+                    Log.d(Api.DATAPLUG_TAG, "response local -> " + friendId);
                 if (friendId == null || accountId == null || requestId == null) {
                     Log.e(Api.DATAPLUG_TAG, "missing mandatory requeset parameter");
                     return 0;
