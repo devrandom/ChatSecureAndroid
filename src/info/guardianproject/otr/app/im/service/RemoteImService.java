@@ -274,7 +274,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
                 String accountId = intent.getExtras().getString(Api.EXTRA_ACCOUNT_ID);
                 String requestId = intent.getExtras().getString(Api.EXTRA_REQUEST_ID);
                 String headers = intent.getExtras().getString(Api.EXTRA_HEADERS);
-                String content = intent.getExtras().getString(Api.EXTRA_CONTENT);
+                byte[] content = intent.getExtras().getByteArray(Api.EXTRA_CONTENT);
                 if (Debug.DEBUG_ENABLED)
                     Log.d(Api.DATAPLUG_TAG, "request local -> " + friendId + ": " + method + " " + uri);
                 
@@ -288,8 +288,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
                 request.setUri(uri);
                 request.setFriendId(friendId);
                 request.setRequestId(requestId);
-                if (content != null)
-                    request.setContent(content.getBytes());
+                request.setContent(content);
                 request.setAccountId(accountId);
                 request.setHeaders(headers);
                 mDataPlugger.sendRequestToRemote(request);
@@ -299,7 +298,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
                 String accountId = intent.getExtras().getString(Api.EXTRA_ACCOUNT_ID);
                 String requestId = intent.getExtras().getString(Api.EXTRA_REQUEST_ID);
                 String headers = intent.getExtras().getString(Api.EXTRA_HEADERS);
-                String content = intent.getExtras().getString(Api.EXTRA_CONTENT);
+                byte[] content = intent.getExtras().getByteArray(Api.EXTRA_CONTENT);
 
                 if (Debug.DEBUG_ENABLED)
                     Log.d(Api.DATAPLUG_TAG, "response local -> " + friendId);
@@ -313,8 +312,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
                 response.setStatusString("OK");
                 response.setFriendId(friendId);
                 response.setRequestId(requestId);
-                if (content != null)
-                    response.setContent(content.getBytes());
+                response.setContent(content);
                 response.setAccountId(accountId);
                 response.setHeaders(headers);
                 mDataPlugger.sendResponseToRemote(response);
