@@ -267,7 +267,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
 
                 // FIXME is this the right value?
                 return 0;
-            } else if (intent.getAction() == Api.REQUEST_ACTION) {
+            } else if (intent.getAction().equals(Api.REQUEST_ACTION)) {
                 String method = intent.getExtras().getString(Api.EXTRA_METHOD);
                 String uri = intent.getExtras().getString(Api.EXTRA_URI);
                 String friendId = intent.getExtras().getString(Api.EXTRA_FRIEND_ID);
@@ -294,7 +294,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
                 request.setHeaders(headers);
                 mDataPlugger.sendRequestToRemote(request);
                 return 0;
-            } else if (intent.getAction() == Api.RESPONSE_FROM_LOCAL_ACTION) {
+            } else if (intent.getAction().equals(Api.RESPONSE_FROM_LOCAL_ACTION)) {
                 String friendId = intent.getExtras().getString(Api.EXTRA_FRIEND_ID);
                 String accountId = intent.getExtras().getString(Api.EXTRA_ACCOUNT_ID);
                 String requestId = intent.getExtras().getString(Api.EXTRA_REQUEST_ID);
