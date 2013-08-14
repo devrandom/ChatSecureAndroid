@@ -222,7 +222,7 @@ public class DiscoverActivity extends Activity {
 		zIntent.putExtra( Api.EXTRA_ACCOUNT_ID , mRequestToLocalExtras.getString(Api.EXTRA_ACCOUNT_ID) ) ;
 		zIntent.putExtra( Api.EXTRA_FRIEND_ID , mRequestToLocalExtras.getString(Api.EXTRA_FRIEND_ID) ) ;
 		zIntent.putExtra( Api.EXTRA_REQUEST_ID , mRequestToLocalExtras.getString(Api.EXTRA_REQUEST_ID) ) ;
-		zIntent.putExtra( Api.EXTRA_CONTENT, aContent ) ;
+		zIntent.putExtra( Api.EXTRA_CONTENT, aContent.getBytes() ) ;
 		startService( zIntent ) ;
 		finish() ;
 	}
