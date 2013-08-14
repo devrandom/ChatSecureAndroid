@@ -16,11 +16,13 @@
 package info.guardianproject.otr.sample.securegallery;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.app.Activity;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -162,18 +164,21 @@ public class DiscoverActivity extends Activity {
 	
 	private void doResponse(Intent aIntent) throws IOException{
 		String zFriendId = aIntent.getStringExtra(Api.EXTRA_FRIEND_ID);
+		MainActivity.console( "doResponse: EXTRA_FRIEND_ID:" + zFriendId ) ;
 		String zRequestId = aIntent.getStringExtra(Api.EXTRA_REQUEST_ID);
-		String zContent = aIntent.getStringExtra(Api.EXTRA_CONTENT);
+		byte[] zContent = aIntent.getByteArrayExtra(Api.EXTRA_CONTENT);
 		if( ! sRequestId.equals(zRequestId) ) {
 			MainActivity.error( this, "Request id mismatch: " + zRequestId ) ;
 			return ;
 		}
 		// launch target
-		launch( zFriendId, zContent ) ;
+		launch( zFriendId, zContent );
 	}
 	
-	private void launch(String aFriendId, String aContent) {
-		MainActivity.console( "launch: content=" + aContent ) ;
+	private void launch(String aFriendId, byte[] aContentByteArray) throws UnsupportedEncodingException {
+		String content = String.valueOf(aContentByteArray);
+		content = new String(aContentByteArray, "UTF-8");
+		MainActivity.console( "launch: content=" + content );
 		// TODO your code here !!!
 	}
 
