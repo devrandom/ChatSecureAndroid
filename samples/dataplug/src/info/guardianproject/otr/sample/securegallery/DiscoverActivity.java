@@ -15,10 +15,15 @@
  */
 package info.guardianproject.otr.sample.securegallery;
 
+import info.guardianproject.otr.sample.securegallery.DiscoverActivity.RequestCache.Request;
+
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.util.UUID;
 
+import org.apache.http.client.utils.URLEncodedUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -36,12 +41,18 @@ import android.widget.Toast;
  */
 public class DiscoverActivity extends Activity {
 	
+	/**
+	 * 
+	 */
+	private static final String CHARSET = "UTF-8";
+
 	public static final String TAG = DiscoverActivity.class.getSimpleName() ;
 
 	/**
 	 * 
 	 */
 	private static final String URI_GALLERY = "chatsecure:/gallery/";
+	private static final String URI_IMAGE = URI_GALLERY + "image/";
 	private static final int REQUEST_CODE_GALLERY_LISTING = 6661;
 
 	private Bundle mRequestToLocalExtras; // TODO create a map, keyed by requestID
@@ -160,6 +171,8 @@ public class DiscoverActivity extends Activity {
 				mUri = aUri ;
 			}
 			public String getUri() { return mUri ; }
+			public String getFriendId() { return mFriendId ; }
+			public String getAccountId() { return mAccountId ; }
 		}
 		
 		static Cache<String, Request> sCache ;
@@ -207,19 +220,36 @@ public class DiscoverActivity extends Activity {
 			return ;
 		}
 		if( zRequest.getUri().equals(URI_GALLERY) ) {
-			doResponseGallery( zContent ) ;
+			doResponseGallery( zRequest, zContent ) ;
+			return ;
+		}
+		if( zRequest.getUri().startsWith(URI_IMAGE) ) {
+			doResponseGalleryImage( zRequest ) ;
 			return ;
 		}
 	}
 	
-	private void doResponseGallery( byte[] aContentByteArray) throws UnsupportedEncodingException, JSONException {
-		String content = new String(aContentByteArray, "UTF-8");
+	private void doResponseGallery( Request aRequest, byte[] aContentByteArray) throws UnsupportedEncodingException, JSONException {
+		String content = new String(aContentByteArray, CHARSET);
 		MainActivity.console( "doResponseGallery: content=" + content );
 		JSONObject jsonObject = new JSONObject( content );
-		String uri = jsonObject.getString("uri");
+		String responseUri = jsonObject.getString("uri");
+
+		String requestUri = URI_IMAGE + URLEncoder.encode(responseUri, CHARSET);
+
+		sendRequest(aRequest.getAccountId(), aRequest.getFriendId(), requestUri);
+
 		return ;
 	}
-
+	
+	private void doResponseGalleryImage( Request aRequest ) throws UnsupportedEncodingException, JSONException {
+		MainActivity.console( "doResponseGalleryImage: uri=" + aRequest.getUri() );
+		String contentUriEncoded = aRequest.getUri().substring( URI_IMAGE.length() ) ;
+		String contentUri = URLDecoder.decode(contentUriEncoded, CHARSET);
+		
+		return ;
+	}
+	
 	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
 		super.onActivityResult(requestCode, resultCode, data);
