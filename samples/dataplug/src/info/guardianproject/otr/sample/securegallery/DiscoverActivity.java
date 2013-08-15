@@ -103,7 +103,7 @@ public class DiscoverActivity extends Activity {
 	 * Alice - initiator - the side that hit the ui first
 	 * Bob - recieved - in doRequestToLocal - responds with json
 	 */
-	private void doRequestToLocal(Intent aIntent) throws JSONException {
+	private void doRequestToLocal(Intent aIntent) throws JSONException, UnsupportedEncodingException {
 		// look at EXTRA_URI - /gallery/activate
 		String zUri = aIntent.getStringExtra( Api.EXTRA_URI );
 		if( zUri == null ) {
@@ -116,6 +116,12 @@ public class DiscoverActivity extends Activity {
 			doRequestGallery( this ) ;
 			return ;
 		}
+		if( zUri.startsWith( URI_IMAGE )) {
+			// repond with : accountid, friendid, requiestid, image binary
+			mRequestToLocalExtras = aIntent.getExtras() ;
+			doRequestGalleryImage( this, zUri ) ;
+			return ;
+		}
 		MainActivity.error( this, "Invalid URI: "+ zUri ) ;
 	}
 	
@@ -124,6 +130,16 @@ public class DiscoverActivity extends Activity {
 		Intent zIntent = new Intent(Intent.ACTION_PICK);
 		zIntent.setType("image/*");
 		aActivity.startActivityForResult(zIntent, REQUEST_CODE_GALLERY_LISTING );		
+	}
+	
+	private void doRequestGalleryImage(Activity aActivity, String aUri) throws UnsupportedEncodingException {
+		MainActivity.console( "doRequestGalleryImage" ) ;
+		String contentUriEncoded = aUri.substring( URI_IMAGE.length() ) ;
+		String contentUri = URLDecoder.decode(contentUriEncoded, CHARSET);
+		// reading the binary file
+		byte[] bytes = { 1,2,3,4,5,6 } ;
+		
+		sendResponseFromLocal(bytes);
 	}
 
 	private void doDiscover(Intent aIntent) throws JSONException {
@@ -224,7 +240,7 @@ public class DiscoverActivity extends Activity {
 			return ;
 		}
 		if( zRequest.getUri().startsWith(URI_IMAGE) ) {
-			doResponseGalleryImage( zRequest ) ;
+			doResponseGalleryImage( zRequest, zContent ) ;
 			return ;
 		}
 	}
@@ -242,11 +258,9 @@ public class DiscoverActivity extends Activity {
 		return ;
 	}
 	
-	private void doResponseGalleryImage( Request aRequest ) throws UnsupportedEncodingException, JSONException {
+	private void doResponseGalleryImage( Request aRequest, byte[] aContent ) throws UnsupportedEncodingException, JSONException {
 		MainActivity.console( "doResponseGalleryImage: uri=" + aRequest.getUri() );
-		String contentUriEncoded = aRequest.getUri().substring( URI_IMAGE.length() ) ;
-		String contentUri = URLDecoder.decode(contentUriEncoded, CHARSET);
-		
+		// display the content
 		return ;
 	}
 	
@@ -261,7 +275,7 @@ public class DiscoverActivity extends Activity {
 			}
 			Uri uri = data.getData() ;
 			String content = getGalleryListing( uri.toString() ) ;
-			sendResponseFromLocal( Api.REQUEST_GALLERY_LISTING, content ) ;
+			sendResponseFromLocal( content.getBytes() ) ;
 			break ;
 		default:
 			Toast.makeText(this, "ERROR: requestCode unknown: " + requestCode, Toast.LENGTH_LONG).show();
@@ -282,7 +296,7 @@ public class DiscoverActivity extends Activity {
 	 * @param requestGalleryListing
 	 * @param string
 	 */
-	private void sendResponseFromLocal(String aRequest, String aContent) {
+	private void sendResponseFromLocal(byte[] aContent) {
 		// repond with : accountid, friendid, requiestid, body(json)
 		MainActivity.console( "sendResponseFromLocal: content=" + aContent ) ;
 		Intent zIntent = new Intent();
@@ -290,7 +304,7 @@ public class DiscoverActivity extends Activity {
 		zIntent.putExtra( Api.EXTRA_ACCOUNT_ID , mRequestToLocalExtras.getString(Api.EXTRA_ACCOUNT_ID) ) ;
 		zIntent.putExtra( Api.EXTRA_FRIEND_ID , mRequestToLocalExtras.getString(Api.EXTRA_FRIEND_ID) ) ;
 		zIntent.putExtra( Api.EXTRA_REQUEST_ID , mRequestToLocalExtras.getString(Api.EXTRA_REQUEST_ID) ) ;
-		zIntent.putExtra( Api.EXTRA_CONTENT, aContent.getBytes() ) ;
+		zIntent.putExtra( Api.EXTRA_CONTENT, aContent ) ;
 		startService( zIntent ) ;
 		finish() ;
 	}
