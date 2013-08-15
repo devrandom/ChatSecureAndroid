@@ -17,16 +17,18 @@ package info.guardianproject.otr.sample.securegallery;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.UUID;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+
 import android.app.Activity;
-import android.content.ComponentName;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.Toast;
 
 /**
@@ -140,46 +142,82 @@ public class DiscoverActivity extends Activity {
 		return json.toString() ;
 	}
 	
-	private static String sRequestId ;
-	
 	private void doActivate(Intent aIntent){
 		String zFriendId = aIntent.getStringExtra(Api.EXTRA_FRIEND_ID);
 		String zAccountId = aIntent.getStringExtra(Api.EXTRA_ACCOUNT_ID);
 		MainActivity.console( "doActivate: Friend:" + zFriendId ) ;
-		sRequestId = "123456798" ;
-		sendRequest(zAccountId, zFriendId, sRequestId);
+		sendRequest(zAccountId, zFriendId, URI_GALLERY);
 	}
 	
-	private void sendRequest(String aAccountId, String aFriendId, String aRequestId) {
-		MainActivity.console( "sendRequest: EXTRA_URI:" + URI_GALLERY ) ;
+	static class RequestCache {
+		static class Request {
+			String mAccountId;
+			String mFriendId;
+			String mUri;
+			public Request( String aAccountId, String aFriendId, String aUri) {
+				mAccountId = aAccountId ;
+				mFriendId = aFriendId ;
+				mUri = aUri ;
+			}
+			public String getUri() { return mUri ; }
+		}
+		
+		static Cache<String, Request> sCache ;
+		
+		public static String create(String aAccountId, String aFriendId, String aUri) {
+			if( sCache == null ) {
+				sCache = CacheBuilder.newBuilder().maximumSize(100).build();
+			}
+			Request request = new Request( aAccountId, aFriendId, aUri);
+			String key = UUID.randomUUID().toString();
+			sCache.put(key, request);
+			return key ;
+		}
+		
+		public static Request get( String aReqestId ) {
+			return sCache.getIfPresent(aReqestId);
+		}
+		
+	}
+	
+	private void sendRequest(String aAccountId, String aFriendId, String aUri ) {
+		
+		String requestId = RequestCache.create( aAccountId, aFriendId, aUri ) ;
+
+		MainActivity.console( "sendRequest: EXTRA_URI:" + aUri ) ;
 		Intent zIntent = new Intent();
 		zIntent.setAction(Api.ACTION_REQUEST) ;
 		zIntent.putExtra( Api.EXTRA_METHOD , "GET" ) ;
-		zIntent.putExtra( Api.EXTRA_URI , URI_GALLERY ) ;
+		zIntent.putExtra( Api.EXTRA_URI, aUri ) ;
 		zIntent.putExtra( Api.EXTRA_ACCOUNT_ID , aAccountId ) ;
 		zIntent.putExtra( Api.EXTRA_FRIEND_ID , aFriendId ) ;
-		zIntent.putExtra( Api.EXTRA_REQUEST_ID , aRequestId ) ;
+		zIntent.putExtra( Api.EXTRA_REQUEST_ID , requestId ) ;
 		startService( zIntent ) ;
 	}
 	
-	private void doResponse(Intent aIntent) throws IOException{
+	private void doResponse(Intent aIntent) throws IOException, JSONException{
 		String zFriendId = aIntent.getStringExtra(Api.EXTRA_FRIEND_ID);
-		MainActivity.console( "doResponse: EXTRA_FRIEND_ID:" + zFriendId ) ;
+		MainActivity.console( "doResponse: EXTRA_FRIEND_ID:" + zFriendId );
 		String zRequestId = aIntent.getStringExtra(Api.EXTRA_REQUEST_ID);
 		byte[] zContent = aIntent.getByteArrayExtra(Api.EXTRA_CONTENT);
-		if( ! sRequestId.equals(zRequestId) ) {
-			MainActivity.error( this, "Request id mismatch: " + zRequestId ) ;
+		
+		RequestCache.Request zRequest = RequestCache.get(zRequestId);
+		if( zRequest == null ) {
+			MainActivity.error( this, "Request not found: " + zRequestId ) ;
 			return ;
 		}
-		// launch target
-		launch( zFriendId, zContent );
+		if( zRequest.getUri().equals(URI_GALLERY) ) {
+			doResponseGallery( zContent ) ;
+			return ;
+		}
 	}
 	
-	private void launch(String aFriendId, byte[] aContentByteArray) throws UnsupportedEncodingException {
-		String content = String.valueOf(aContentByteArray);
-		content = new String(aContentByteArray, "UTF-8");
-		MainActivity.console( "launch: content=" + content );
-		// TODO your code here !!!
+	private void doResponseGallery( byte[] aContentByteArray) throws UnsupportedEncodingException, JSONException {
+		String content = new String(aContentByteArray, "UTF-8");
+		MainActivity.console( "doResponseGallery: content=" + content );
+		JSONObject jsonObject = new JSONObject( content );
+		String uri = jsonObject.getString("uri");
+		return ;
 	}
 
 	@Override
