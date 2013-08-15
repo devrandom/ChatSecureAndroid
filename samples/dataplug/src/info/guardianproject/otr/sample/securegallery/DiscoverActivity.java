@@ -17,6 +17,9 @@ package info.guardianproject.otr.sample.securegallery;
 
 import info.guardianproject.otr.sample.securegallery.DiscoverActivity.RequestCache.Request;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
@@ -103,7 +106,7 @@ public class DiscoverActivity extends Activity {
 	 * Alice - initiator - the side that hit the ui first
 	 * Bob - recieved - in doRequestToLocal - responds with json
 	 */
-	private void doRequestToLocal(Intent aIntent) throws JSONException, UnsupportedEncodingException {
+	private void doRequestToLocal(Intent aIntent) throws JSONException, IOException {
 		// look at EXTRA_URI - /gallery/activate
 		String zUri = aIntent.getStringExtra( Api.EXTRA_URI );
 		if( zUri == null ) {
@@ -132,14 +135,22 @@ public class DiscoverActivity extends Activity {
 		aActivity.startActivityForResult(zIntent, REQUEST_CODE_GALLERY_LISTING );		
 	}
 	
-	private void doRequestGalleryImage(Activity aActivity, String aUri) throws UnsupportedEncodingException {
-		MainActivity.console( "doRequestGalleryImage" ) ;
+	private void doRequestGalleryImage(Activity aActivity, String aUri) throws IOException {
 		String contentUriEncoded = aUri.substring( URI_IMAGE.length() ) ;
 		String contentUri = URLDecoder.decode(contentUriEncoded, CHARSET);
+		MainActivity.console( "doRequestGalleryImage:" + contentUri ) ;
 		// reading the binary file
-		byte[] bytes = { 1,2,3,4,5,6 } ;
+		Uri uri = Uri.parse(contentUri);
+		String path = Utils.MediaStoreHelper.getPath(aActivity, uri);
 		
-		sendResponseFromLocal(bytes);
+		File file = new File(path);
+		FileInputStream fis = new FileInputStream(file);
+		long length = file.length() ;
+		byte[] buffer = new byte[ (int) length ];
+				
+		fis.read(buffer);
+		MainActivity.console( "doRequestGalleryImage:" + buffer[0] +" "+ buffer[1] +" "+ buffer[3] ) ;
+		sendResponseFromLocal(buffer);
 	}
 
 	private void doDiscover(Intent aIntent) throws JSONException {
