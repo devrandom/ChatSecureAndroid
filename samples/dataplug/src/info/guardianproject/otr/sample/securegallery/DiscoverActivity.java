@@ -17,10 +17,13 @@ package info.guardianproject.otr.sample.securegallery;
 
 import info.guardianproject.otr.sample.securegallery.DiscoverActivity.RequestCache.Request;
 
+import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -35,6 +38,8 @@ import com.google.common.cache.CacheBuilder;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Toast;
@@ -56,7 +61,7 @@ public class DiscoverActivity extends Activity {
 	 */
 	private static final String URI_GALLERY = "chatsecure:/gallery/";
 	private static final String URI_IMAGE = URI_GALLERY + "image/";
-	private static final int REQUEST_CODE_GALLERY_LISTING = 6661;
+	public static final int REQUEST_CODE_GALLERY_LISTING = 6661;
 
 	private Bundle mRequestToLocalExtras; // TODO create a map, keyed by requestID
 
@@ -271,8 +276,21 @@ public class DiscoverActivity extends Activity {
 	
 	private void doResponseGalleryImage( Request aRequest, byte[] aContent ) throws UnsupportedEncodingException, JSONException {
 		MainActivity.console( "doResponseGalleryImage: uri=" + aRequest.getUri() );
+
+		InputStream is = new ByteArrayInputStream(aContent);
+		Bitmap bitmap = BitmapFactory.decodeStream(is);
+		int w = bitmap.getWidth() ;
+		int h = bitmap.getHeight() ;
+		
 		// display the content
 		return ;
+	}
+	
+	public static void showPng( byte[] aByteArray ) {
+		InputStream is = new ByteArrayInputStream( aByteArray );
+		Bitmap bitmap = BitmapFactory.decodeStream(is);
+		int w = bitmap.getWidth() ;
+		int h = bitmap.getHeight() ;
 	}
 	
 	@Override
