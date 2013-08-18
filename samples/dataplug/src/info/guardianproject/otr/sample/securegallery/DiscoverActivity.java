@@ -276,14 +276,19 @@ public class DiscoverActivity extends Activity {
 	}
 	
 	private void doResponseGalleryImage( Request aRequest, byte[] aContent ) throws UnsupportedEncodingException, JSONException {
-		MainActivity.console( "doResponseGalleryImage: uri=" + aRequest.getUri() );
+		MainActivity.console( "doResponseGalleryImage: uri=" + URLDecoder.decode(aRequest.getUri(), CHARSET));
+		MainActivity.console( "doResponseGalleryImage: length=" + aContent.length );
 
 		InputStream is = new ByteArrayInputStream(aContent);
 		Bitmap bitmap = BitmapFactory.decodeStream(is);
+		if( bitmap == null ) {
+			MainActivity.error(this,"Bitmap NULL");
+			return ;
+		}
 		int w = bitmap.getWidth() ;
 		int h = bitmap.getHeight() ;
-		
-		// display the content
+		MainActivity.console( "doResponseGalleryImage: bitmap dim=" + w + "/" + h );
+		MainActivity.showBitmap( this, bitmap ) ;
 		return ;
 	}
 	

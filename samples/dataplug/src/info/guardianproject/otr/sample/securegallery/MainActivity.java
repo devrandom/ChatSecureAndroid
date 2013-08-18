@@ -12,8 +12,10 @@ import android.os.Looper;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.util.Log;
 import android.view.Menu;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -25,6 +27,7 @@ public class MainActivity extends Activity {
 	private static StringBuffer sBuffer ;
 	
 	private static Handler sHandler = new Handler(Looper.getMainLooper());	
+	private static ImageView sConsoleImageView ;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -35,6 +38,8 @@ public class MainActivity extends Activity {
 
 	private void init() {
 		sConsole = (TextView)findViewById(R.id.consoleTextView);
+		sConsoleImageView = (ImageView)findViewById(R.id.consoleImageView );
+		
 		sBuffer=new StringBuffer() ;
 		sHandler = new Handler(Looper.getMainLooper());	
 		console( "Ready" ) ;
@@ -108,5 +113,22 @@ public class MainActivity extends Activity {
 				
 		fis.read(buffer);
 		return buffer ;
+	}
+
+	/**
+	 * @param discoverActivity
+	 * @param bitmap
+	 */
+	public static void showBitmap( Activity aActivity, final Bitmap bitmap) {
+		
+		sHandler.post(new Runnable() {
+			
+			@Override
+			public void run() {
+				if( sConsoleImageView != null ) {
+					sConsoleImageView.setImageBitmap(bitmap);
+				}
+			}
+		}) ;
 	}
 }
