@@ -154,7 +154,8 @@ public class DiscoverActivity extends Activity {
 		byte[] buffer = new byte[ (int) length ];
 				
 		fis.read(buffer);
-		MainActivity.console( "doRequestGalleryImage:" + buffer[0] +" "+ buffer[1] +" "+ buffer[3] ) ;
+		MainActivity.console( "doRequestGalleryImage:" + buffer.length ) ;
+		fis.close();
 		sendResponseFromLocal(buffer);
 	}
 
