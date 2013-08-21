@@ -26,6 +26,7 @@ import java.util.UUID;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.app.Activity;
 import android.app.Service;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -109,6 +110,7 @@ public class DataplugService extends Service {
 			mRequestToLocalExtras = aIntent.getExtras() ;
 			Intent intent = new Intent(this, MainActivity.class);
 			intent.setAction("info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY");
+			intent.setFlags( Intent.FLAG_ACTIVITY_NEW_TASK );
 			startActivity(intent);
 			return ;
 		}
@@ -119,6 +121,7 @@ public class DataplugService extends Service {
 			String contentUri = URLDecoder.decode(contentUriEncoded, CHARSET);
 			Intent intent = new Intent(this, MainActivity.class);
 			intent.setAction("info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY_IMAGE");
+			intent.setFlags( Intent.FLAG_ACTIVITY_NEW_TASK );
 			intent.putExtra(Api.EXTRA_URI, contentUri);
 			startActivity(intent);
 			return ;
@@ -227,6 +230,7 @@ public class DataplugService extends Service {
 			MainActivity.console( "doResponseGalleryImage: uri=" + URLDecoder.decode(zRequest.getUri(), CHARSET));
 			Intent intent = new Intent(this, MainActivity.class);
 			intent.setAction("info.guardianproject.otr.app.im.dataplug.SHOW_IMAGE");
+			intent.setFlags( Intent.FLAG_ACTIVITY_NEW_TASK );
 			intent.putExtra(Api.EXTRA_CONTENT, zContent);
 			startActivity(intent);
 			return ;

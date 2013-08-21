@@ -50,12 +50,12 @@ public class MainActivity extends Activity {
 
 	private void handleIntent(Intent intent) throws IOException {
 		String action = intent.getAction();
-		if (action == "info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY") {
+		if (action.equals( "info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY") ) {
 			doRequestGallery();
-			finish();
 		}
-		if (action == "info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY_IMAGE") {
+		if (action.equals( "info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY_IMAGE") ) {
 			doRequestGalleryImage(intent.getExtras().getString(Api.EXTRA_URI));
+			finish();
 		}
 	}
 
