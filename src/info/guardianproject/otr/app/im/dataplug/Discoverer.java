@@ -14,9 +14,9 @@ import org.json.JSONObject;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.pm.ServiceInfo;
 import android.util.Log;
 
 import com.google.common.collect.Lists;
@@ -57,7 +57,7 @@ public class Discoverer {
         List<ResolveInfo> list = pm.queryIntentServices(intent, 0);
         Log.i(Api.DATAPLUG_TAG, "dataplugs:");
         for (ResolveInfo ri : list) {
-            ActivityInfo info = ri.activityInfo;
+            ServiceInfo info = ri.serviceInfo;
             ComponentName component = new ComponentName(info.packageName, info.name);
             Log.i(Api.DATAPLUG_TAG, component.getClassName());
             String token = makeToken();
