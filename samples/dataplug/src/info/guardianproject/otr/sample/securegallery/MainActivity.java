@@ -48,7 +48,7 @@ public class MainActivity extends Activity {
 		}
 	}
 
-	private void handleIntent(Intent intent) throws IOException {
+	private void handleIntent(Intent intent) throws Exception {
 		String action = intent.getAction();
 		if (action.equals( "info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY") ) {
 			doRequestGallery();
@@ -56,6 +56,9 @@ public class MainActivity extends Activity {
 		if (action.equals( "info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY_IMAGE") ) {
 			doRequestGalleryImage(intent.getExtras().getString(Api.EXTRA_URI));
 			finish();
+		}
+		if (action.equals( "info.guardianproject.otr.app.im.dataplug.SHOW_IMAGE") ) {
+			doResponseGalleryImage(intent.getExtras().getByteArray(Api.EXTRA_CONTENT));
 		}
 	}
 
