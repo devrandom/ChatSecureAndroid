@@ -54,7 +54,7 @@ public class Discoverer {
         Intent intent = new Intent(Api.DISCOVER_ACTION);
 
         PackageManager pm = mContext.getPackageManager();
-        List<ResolveInfo> list = pm.queryIntentActivities(intent, 0);
+        List<ResolveInfo> list = pm.queryIntentServices(intent, 0);
         Log.i(Api.DATAPLUG_TAG, "dataplugs:");
         for (ResolveInfo ri : list) {
             ActivityInfo info = ri.activityInfo;
@@ -64,9 +64,8 @@ public class Discoverer {
             tokens.put(token, component);
             Intent discoverIntent = new Intent(Api.DISCOVER_ACTION);
             discoverIntent.setComponent(component);
-            discoverIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             discoverIntent.putExtra(Api.EXTRA_TOKEN, token);
-            mContext.startActivity(discoverIntent);
+            mContext.startService(discoverIntent);
         }
         Log.i(Api.DATAPLUG_TAG, "dataplugs end.");
     }
@@ -79,10 +78,9 @@ public class Discoverer {
 
         Intent activateIntent = new Intent(Api.ACTIVATE_ACTION);
         activateIntent.setComponent(registration.getComponent());
-        activateIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         activateIntent.putExtra(Api.EXTRA_ACCOUNT_ID, accountId);
         activateIntent.putExtra(Api.EXTRA_FRIEND_ID, friendId);
-        mContext.startActivity(activateIntent);
+        mContext.startService(activateIntent);
     }
 
     /**

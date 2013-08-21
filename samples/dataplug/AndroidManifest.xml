@@ -23,19 +23,38 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-        
-        <!-- DISCOVER -->
-        <activity android:name=".DiscoverActivity" >
             <intent-filter>
-                <action android:name="info.guardianproject.otr.app.im.dataplug.DISCOVER" />
-                <action android:name="info.guardianproject.otr.app.im.dataplug.ACTIVATE" />
-                <action android:name="info.guardianproject.otr.app.im.dataplug.RESPONSE" />
-                <action android:name="info.guardianproject.otr.app.im.dataplug.REQUEST_TO_LOCAL" />
-
+            	<action android:name="info.guardianproject.otr.app.im.dataplug.SHOW_IMAGE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+            	<action android:name="info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+            	<action android:name="info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY_IMAGE" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        
+        <!-- Dataplug -->
+        <service android:name=".DataplugService" >
+            <intent-filter>
+                <action android:name="info.guardianproject.otr.app.im.dataplug.DISCOVER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="info.guardianproject.otr.app.im.dataplug.ACTIVATE" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="info.guardianproject.otr.app.im.dataplug.RESPONSE" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="info.guardianproject.otr.app.im.dataplug.REQUEST_TO_LOCAL" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="info.guardianproject.otr.app.im.dataplug.RESPONE_FROM_LOCAL" />
+            </intent-filter>
+        </service>
         
     </application>
 

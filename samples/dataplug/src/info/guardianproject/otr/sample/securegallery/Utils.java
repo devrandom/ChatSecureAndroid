@@ -3,6 +3,11 @@
  */
 package info.guardianproject.otr.sample.securegallery;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
@@ -26,5 +31,22 @@ public class Utils {
 	        cursor.moveToFirst();
 	        return cursor.getString(column_index);
 	    }
+
+		public static byte[] getImageContent(Context aContext, String contentUri)
+				throws FileNotFoundException, IOException {
+			// reading the binary file
+			Uri uri = Uri.parse(contentUri);
+			String path = Utils.MediaStoreHelper.getPath(aContext, uri);
+			
+			File file = new File(path);
+			FileInputStream fis = new FileInputStream(file);
+			long length = file.length() ;
+			byte[] buffer = new byte[ (int) length ];
+					
+			fis.read(buffer);
+			MainActivity.console( "doRequestGalleryImage:" + buffer.length ) ;
+			fis.close();
+			return buffer;
+		}
 	}
 }

@@ -50,12 +50,11 @@ public class DataPlugger {
         }
         Intent responseIntent = new Intent(Api.RESPONSE_ACTION);
         responseIntent.setComponent(registration.getComponent());
-        responseIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         responseIntent.putExtra(Api.EXTRA_REQUEST_ID, response.getRequestId());
         responseIntent.putExtra(Api.EXTRA_FRIEND_ID, response.getFriendId());
         responseIntent.putExtra(Api.EXTRA_HEADERS, response.getHeaders());
         responseIntent.putExtra(Api.EXTRA_CONTENT, response.getContent());
-        mContext.startActivity(responseIntent);
+        mContext.startService(responseIntent);
         return true;
     }
 
@@ -86,7 +85,6 @@ public class DataPlugger {
         }
         Intent requestIntent = new Intent(Api.REQUEST_TO_LOCAL_ACTION);
         requestIntent.setComponent(registration.getComponent());
-        requestIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         requestIntent.putExtra(Api.EXTRA_METHOD, request.getMethod());
         requestIntent.putExtra(Api.EXTRA_URI, request.getUri());
         requestIntent.putExtra(Api.EXTRA_ACCOUNT_ID, request.getAccountId());
@@ -94,7 +92,7 @@ public class DataPlugger {
         requestIntent.putExtra(Api.EXTRA_REQUEST_ID, request.getRequestId());
         requestIntent.putExtra(Api.EXTRA_HEADERS, request.getHeaders());
         requestIntent.putExtra(Api.EXTRA_CONTENT, request.getContent());
-        mContext.startActivity(requestIntent);
+        mContext.startService(requestIntent);
         return true;
     }
 

@@ -1,20 +1,25 @@
 package info.guardianproject.otr.sample.securegallery;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 
-import android.net.Uri;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
-import android.view.Menu;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -28,12 +33,30 @@ public class MainActivity extends Activity {
 	
 	private static Handler sHandler = new Handler(Looper.getMainLooper());	
 	private static ImageView sConsoleImageView ;
+
+	public static final int REQUEST_CODE_GALLERY_LISTING = 6661;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		init() ;
+		try {
+			handleIntent(getIntent());
+		} catch (Throwable t) {
+			error(this, t.getMessage());
+		}
+	}
+
+	private void handleIntent(Intent intent) throws IOException {
+		String action = intent.getAction();
+		if (action == "info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY") {
+			doRequestGallery();
+			finish();
+		}
+		if (action == "info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY_IMAGE") {
+			doRequestGalleryImage(intent.getExtras().getString(Api.EXTRA_URI));
+		}
 	}
 
 	private void init() {
@@ -70,35 +93,6 @@ public class MainActivity extends Activity {
 		console( "Error: " + aMessage );
 	}
 	
-	private void doRequestGallery(Activity aActivity) {
-		MainActivity.console( "doRequestGallery" ) ;
-		Intent zIntent = new Intent(Intent.ACTION_PICK);
-		zIntent.setType("image/*");
-		aActivity.startActivityForResult(zIntent, DiscoverActivity.REQUEST_CODE_GALLERY_LISTING );
-	}
-	
-	@Override
-	public void onActivityResult(int requestCode, int resultCode, Intent data) {
-		super.onActivityResult(requestCode, resultCode, data);
-		switch (requestCode) {
-		case DiscoverActivity.REQUEST_CODE_GALLERY_LISTING:
-			if( resultCode != Activity.RESULT_OK) {
-				Toast.makeText(this, "ERROR: REQUEST_CODE_GALLERY_LISTING: " + resultCode, Toast.LENGTH_LONG).show(); // TODO doialog
-				return ;
-			}
-			Uri uri = data.getData() ;
-			try {
-				byte[] byteArray = getByteArray( uri );
-				DiscoverActivity.showPng( byteArray ) ;
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			break ;
-		default:
-			Toast.makeText(this, "ERROR: requestCode unknown: " + requestCode, Toast.LENGTH_LONG).show();
-		}
-	}
-
 	/**
 	 * @param uri
 	 * @throws IOException 
@@ -113,6 +107,69 @@ public class MainActivity extends Activity {
 				
 		fis.read(buffer);
 		return buffer ;
+	}
+
+	private void doRequestGallery() {
+		MainActivity.console( "doRequestGallery" ) ;
+		Intent zIntent = new Intent(Intent.ACTION_PICK);
+		zIntent.setType("image/*");
+		startActivityForResult(zIntent, REQUEST_CODE_GALLERY_LISTING );		
+	}
+
+	private void doRequestGalleryImage(String contentUri) throws IOException {
+		MainActivity.console( "doRequestGalleryImage:" + contentUri ) ;
+		byte[] buffer = Utils.MediaStoreHelper.getImageContent(this, contentUri);
+		Intent intent = new Intent(this, DataplugService.class);
+		intent.setAction(Api.ACTION_RESPONSE_FROM_LOCAL);
+		intent.putExtra(Api.EXTRA_CONTENT, buffer);
+		startService(intent);
+	}
+
+	@Override
+	public void onActivityResult(int requestCode, int resultCode, Intent data) {
+		super.onActivityResult(requestCode, resultCode, data);
+		switch (requestCode) {
+		case REQUEST_CODE_GALLERY_LISTING:
+			if( resultCode != Activity.RESULT_OK) {
+				Toast.makeText(this, "ERROR: REQUEST_CODE_GALLERY_LISTING: " + resultCode, Toast.LENGTH_LONG).show(); // TODO doialog
+				return ;
+			}
+			Uri uri = data.getData() ;
+			String content = getGalleryListing( uri.toString() ) ;
+			Intent intent = new Intent(this, DataplugService.class);
+			intent.setAction(Api.ACTION_RESPONSE_FROM_LOCAL);
+			intent.putExtra(Api.EXTRA_CONTENT, content.getBytes());
+			startService(intent);
+			break ;
+		default:
+			Toast.makeText(this, "ERROR: requestCode unknown: " + requestCode, Toast.LENGTH_LONG).show();
+		}
+	}
+
+	private String getGalleryListing(String aUri) {
+		JSONObject json = new JSONObject();
+		try {
+			json.put( "uri", aUri );
+		} catch (JSONException e) {
+			throw new RuntimeException(e);
+		}
+		return json.toString();
+	}
+
+	private void doResponseGalleryImage( byte[] aContent ) throws UnsupportedEncodingException, JSONException {
+		MainActivity.console( "doResponseGalleryImage: length=" + aContent.length );
+	
+		InputStream is = new ByteArrayInputStream(aContent);
+		Bitmap bitmap = BitmapFactory.decodeStream(is);
+		if( bitmap == null ) {
+			MainActivity.error(this,"Bitmap NULL");
+			return ;
+		}
+		int w = bitmap.getWidth() ;
+		int h = bitmap.getHeight() ;
+		MainActivity.console( "doResponseGalleryImage: bitmap dim=" + w + "/" + h );
+		MainActivity.showBitmap( this, bitmap ) ;
+		return ;
 	}
 
 	/**
