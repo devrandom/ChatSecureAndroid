@@ -38,32 +38,35 @@ public abstract class DataplugService extends Service {
 		void onResponse(Request aRequest, byte [] aContent);
 	}
 
+	RequestCache mOutgoingCache = new RequestCache();
+	RequestCache mIncomingCache = new RequestCache();
+	
 	protected static class RequestCache {
-		static Cache<String, Request> sCache ;
+		Cache<String, Request> sCache = CacheBuilder.newBuilder().maximumSize(100).build();
 
-		public static String create(String aAccountId, String aFriendId, String aUri, RequestCallback aCallback) {
-			if( sCache == null ) {
-				sCache = CacheBuilder.newBuilder().maximumSize(100).build();
-			}
-			Request request = new Request( aAccountId, aFriendId, aUri, aCallback);
-			String key = UUID.randomUUID().toString();
-			sCache.put(key, request);
-			return key ;
+		public void put(Request aRequest) {
+			sCache.put(aRequest.getId(), aRequest);
 		}
 
-		public static Request get( String aReqestId ) {
-			return sCache.getIfPresent(aReqestId);
+		public Request get( String aRequestId ) {
+			return sCache.getIfPresent(aRequestId);
 		}
 
 	}
 
 	public static class Request {
+		String mId;
 		String mAccountId;
 		String mFriendId;
 		String mUri;
 		RequestCallback mCallback;
 		
 		public Request( String aAccountId, String aFriendId, String aUri, RequestCallback aCallback) {
+			this(UUID.randomUUID().toString(), aAccountId, aFriendId, aUri, aCallback);
+		}
+		
+		public Request( String aId, String aAccountId, String aFriendId, String aUri, RequestCallback aCallback) {
+			mId = aId;
 			mAccountId = aAccountId ;
 			mFriendId = aFriendId ;
 			mUri = aUri ;
@@ -72,6 +75,9 @@ public abstract class DataplugService extends Service {
 		public String getUri() { return mUri ; }
 		public String getFriendId() { return mFriendId ; }
 		public String getAccountId() { return mAccountId ; }
+		public String getId() {
+			return mId;
+		}
 		
 		public RequestCallback getCallback() {
 			return mCallback;
@@ -79,8 +85,6 @@ public abstract class DataplugService extends Service {
 	}
 
 	public static final String TAG = DataplugService.class.getSimpleName() ;
-
-	protected Bundle mRequestToLocalExtras;
 
 	@Override
 	public int onStartCommand(Intent aIntent, int flags, int startId) {
@@ -132,7 +136,8 @@ public abstract class DataplugService extends Service {
 
 	protected void sendRequest(String aAccountId, String aFriendId, String aUri, RequestCallback aCallback) {
 		
-		String requestId = RequestCache.create( aAccountId, aFriendId, aUri, aCallback ) ;
+		Request request = new Request( aAccountId, aFriendId, aUri, aCallback );
+		mOutgoingCache.put(request) ;
 	
 		MainActivity.console( "sendRequest: EXTRA_URI:" + aUri ) ;
 		Intent zIntent = new Intent();
@@ -141,7 +146,7 @@ public abstract class DataplugService extends Service {
 		zIntent.putExtra( Api.EXTRA_URI, aUri ) ;
 		zIntent.putExtra( Api.EXTRA_ACCOUNT_ID , aAccountId ) ;
 		zIntent.putExtra( Api.EXTRA_FRIEND_ID , aFriendId ) ;
-		zIntent.putExtra( Api.EXTRA_REQUEST_ID , requestId ) ;
+		zIntent.putExtra( Api.EXTRA_REQUEST_ID , request.getId() ) ;
 		startService( zIntent ) ;
 	}
 
@@ -151,7 +156,7 @@ public abstract class DataplugService extends Service {
 		String zRequestId = aIntent.getStringExtra(Api.EXTRA_REQUEST_ID);
 		byte[] zContent = aIntent.getByteArrayExtra(Api.EXTRA_CONTENT);
 		
-		Request zRequest = RequestCache.get(zRequestId);
+		Request zRequest = mOutgoingCache.get(zRequestId);
 
 		if( zRequest == null ) {
 			MainActivity.error( this, "Request not found: " + zRequestId ) ;
@@ -166,15 +171,16 @@ public abstract class DataplugService extends Service {
 	 * @param requestGalleryListing
 	 * @param string
 	 */
-	protected void sendResponseFromLocal(byte[] aContent) {
+	protected void sendResponseFromLocal(String aRequestId, byte[] aContent) {
 		// respond with : accountid, friendid, requiestid, body(json)
 		MainActivity.console( "sendResponseFromLocal: content=" + aContent ) ;
 		Intent zIntent = new Intent();
 		zIntent.setAction(Api.ACTION_RESPONSE_FROM_LOCAL) ;
+		Request request = mIncomingCache.get(aRequestId);
 		// FIXME mRequestToLocalExtras needs to be something that causes race conditions
-		zIntent.putExtra( Api.EXTRA_ACCOUNT_ID , mRequestToLocalExtras.getString(Api.EXTRA_ACCOUNT_ID) ) ;
-		zIntent.putExtra( Api.EXTRA_FRIEND_ID , mRequestToLocalExtras.getString(Api.EXTRA_FRIEND_ID) ) ;
-		zIntent.putExtra( Api.EXTRA_REQUEST_ID , mRequestToLocalExtras.getString(Api.EXTRA_REQUEST_ID) ) ;
+		zIntent.putExtra( Api.EXTRA_ACCOUNT_ID , request.getAccountId() ) ;
+		zIntent.putExtra( Api.EXTRA_FRIEND_ID , request.getFriendId() ) ;
+		zIntent.putExtra( Api.EXTRA_REQUEST_ID , request.getId() ) ;
 		zIntent.putExtra( Api.EXTRA_CONTENT, aContent ) ;
 		startService( zIntent ) ;
 	}
@@ -203,15 +209,23 @@ public abstract class DataplugService extends Service {
 			return ;
 		}
 		if( zAction.equals(Api.ACTION_REQUEST_TO_LOCAL ) ) {
-			mRequestToLocalExtras = aIntent.getExtras() ;
+			Bundle extras = aIntent.getExtras();
+			Request request = new Request(
+					extras.getString(Api.EXTRA_REQUEST_ID),
+					extras.getString(Api.EXTRA_ACCOUNT_ID),
+					extras.getString(Api.EXTRA_FRIEND_ID),
+					extras.getString(Api.EXTRA_URI),
+					null
+					);
+			mIncomingCache.put(request) ;
 			
 			String zUri = aIntent.getStringExtra( Api.EXTRA_URI );
-			if( zUri == null ) {
+			if( request.getUri() == null ) {
 				MainActivity.error( this, "RequestToLocal: uri=null" ) ;
 				return ; // TODO error
 			}
 			
-			doRequestToLocal( zUri ) ;
+			doRequestToLocal( request ) ;
 			return ;
 		}
 		if( zAction.equals(Api.ACTION_RESPONSE_FROM_LOCAL ) ) {
@@ -222,11 +236,9 @@ public abstract class DataplugService extends Service {
 	}
 	
 	protected void doResponseFromLocal(Intent aIntent) {
-		// FIXME see further refactoring needed in sendResponseFromLocal
-		// dispatch based on request id
-		sendResponseFromLocal(aIntent.getByteArrayExtra(Api.EXTRA_CONTENT));
+		sendResponseFromLocal(aIntent.getStringExtra(Api.EXTRA_REQUEST_ID), aIntent.getByteArrayExtra(Api.EXTRA_CONTENT));
 	}
 
-	abstract protected void doRequestToLocal(String zUri) throws Exception ;
+	abstract protected void doRequestToLocal(Request aRequest) throws Exception ;
 
 }

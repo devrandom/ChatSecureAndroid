@@ -32,6 +32,8 @@ public class MainActivity extends Activity {
 	private static ImageView sConsoleImageView ;
 
 	public static final int REQUEST_CODE_GALLERY_LISTING = 6661;
+
+	private String mRequestId;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +50,7 @@ public class MainActivity extends Activity {
 	private void handleIntent(Intent intent) throws Exception {
 		String action = intent.getAction();
 		if (action.equals( "info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY") ) {
+			mRequestId = intent.getExtras().getString(Api.EXTRA_REQUEST_ID);
 			doRequestGallery();
 		}
 		if (action.equals( "info.guardianproject.otr.app.im.dataplug.SHOW_IMAGE") ) {
@@ -115,7 +118,7 @@ public class MainActivity extends Activity {
 	
 	private void doRequestGalleryResult(Uri aUri) {
 		String content = getGalleryListing( aUri.toString() ) ;
-		SecureGalleryService.startService( this, content.getBytes() );
+		SecureGalleryService.startService_RESPONSE_FROM_LOCAL( this, mRequestId, content.getBytes() );
 	}
 
 	@Override
@@ -161,11 +164,12 @@ public class MainActivity extends Activity {
 		return ;
 	}
 
-	public static void startActivity_REQUEST_GALLERY( Context aContext ) {
+	public static void startActivity_REQUEST_GALLERY( String aRequestId, Context aContext ) {
 		// repond with : accountid, friendid, requestid, body(json)
 		Intent intent = new Intent(aContext, MainActivity.class);
 		intent.setAction("info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY");
 		intent.setFlags( Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK );
+		intent.putExtra(Api.EXTRA_REQUEST_ID, aRequestId);
 		aContext.startActivity(intent);
 	}
 	

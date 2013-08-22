@@ -39,27 +39,28 @@ public class SecureGalleryService extends DataplugService {
 	 * Alice - initiator - the side that hit the ui first
 	 * Bob - received - in doRequestToLocal - responds with json
 	 */
-	protected void doRequestToLocal( String aUri ) throws Exception {
+	protected void doRequestToLocal( Request aRequest ) throws Exception {
 		// look at EXTRA_URI - /gallery/activate
+		String aUri = aRequest.getUri();
 		if( aUri.equals( URI_GALLERY )) {
-			MainActivity.startActivity_REQUEST_GALLERY(this);
+			MainActivity.startActivity_REQUEST_GALLERY(aRequest.getId(), this);
 			return ;
 		}
 		if( aUri.startsWith( URI_IMAGE )) {
 			// repond with : accountid, friendid, requestid, image binary
 			String contentUriEncoded = aUri.substring( URI_IMAGE.length() ) ;
 			String contentUri = URLDecoder.decode(contentUriEncoded, CHARSET);
-			doRequestToLocal_URI_IMAGE( contentUri );
+			doRequestToLocal_URI_IMAGE( aRequest.getId(), contentUri );
 			return ;
 		}
 		// unknown
 		MainActivity.error( this, "doRequestToLocal: Unknown URI: "+ aUri ) ;
 	}
 	
-	private void doRequestToLocal_URI_IMAGE(String contentUri) throws IOException {
+	private void doRequestToLocal_URI_IMAGE(String aRequestId, String contentUri) throws IOException {
 		MainActivity.console( "doRequestGalleryImage:" + contentUri ) ;
 		byte[] buffer = Utils.MediaStoreHelper.getImageContent(this, contentUri);
-		sendResponseFromLocal( buffer );
+		sendResponseFromLocal( aRequestId, buffer );
 	}
 
 	protected void doResponseGallery( Request aRequest, byte[] aContentByteArray) throws UnsupportedEncodingException, JSONException {
@@ -93,10 +94,11 @@ public class SecureGalleryService extends DataplugService {
 		}) ;
 	}
 
-	public static void startService(Context aContext, byte[] aContent ) {
+	public static void startService_RESPONSE_FROM_LOCAL(Context aContext, String aRequestId, byte[] aContent ) {
 		Intent intent = new Intent(aContext, SecureGalleryService.class);
 		intent.setAction(Api.ACTION_RESPONSE_FROM_LOCAL);
 		intent.putExtra(Api.EXTRA_CONTENT, aContent );
+		intent.putExtra(Api.EXTRA_REQUEST_ID, aRequestId);
 		aContext.startService(intent);
 	}
 }
