@@ -31,10 +31,6 @@
             	<action android:name="info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-            <intent-filter>
-            	<action android:name="info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY_IMAGE" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
         </activity>
         
         <!-- Dataplug -->

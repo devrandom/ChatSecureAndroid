@@ -17,6 +17,7 @@ package info.guardianproject.otr.sample.securegallery;
 
 import info.guardianproject.otr.sample.securegallery.DataplugService.RequestCache.Request;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -24,8 +25,8 @@ import java.net.URLEncoder;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.content.Context;
 import android.content.Intent;
-
 
 /**
  * @author liorsaar
@@ -40,37 +41,29 @@ public class SecureGalleryService extends DataplugService {
 	 * Alice - initiator - the side that hit the ui first
 	 * Bob - received - in doRequestToLocal - responds with json
 	 */
-	protected void doRequestToLocal(Intent aIntent) throws Exception {
+	protected void doRequestToLocal( String aUri ) throws Exception {
 		// look at EXTRA_URI - /gallery/activate
-		String zUri = aIntent.getStringExtra( Api.EXTRA_URI );
-		if( zUri == null ) {
-			MainActivity.error( this, "RequestToLocal: uri=null" ) ;
-			return ; // TODO error
-		}
-		if( zUri.equals( URI_GALLERY )) {
-			// repond with : accountid, friendid, requestid, body(json)
-			mRequestToLocalExtras = aIntent.getExtras() ;
-			Intent intent = new Intent(this, MainActivity.class);
-			intent.setAction("info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY");
-			intent.setFlags( Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK );
-			startActivity(intent);
+		if( aUri.equals( URI_GALLERY )) {
+			MainActivity.startActivity_REQUEST_GALLERY(this);
 			return ;
 		}
-		if( zUri.startsWith( URI_IMAGE )) {
+		if( aUri.startsWith( URI_IMAGE )) {
 			// repond with : accountid, friendid, requestid, image binary
-			mRequestToLocalExtras = aIntent.getExtras() ;
-			String contentUriEncoded = zUri.substring( URI_IMAGE.length() ) ;
+			String contentUriEncoded = aUri.substring( URI_IMAGE.length() ) ;
 			String contentUri = URLDecoder.decode(contentUriEncoded, CHARSET);
-			Intent intent = new Intent(this, MainActivity.class);
-			intent.setAction("info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY_IMAGE");
-			intent.setFlags( Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK );
-			intent.putExtra(Api.EXTRA_URI, contentUri);
-			startActivity(intent);
+			doRequestToLocal_URI_IMAGE( contentUri );
 			return ;
 		}
-		MainActivity.error( this, "Invalid URI: "+ zUri ) ;
+		// unknown
+		MainActivity.error( this, "doRequestToLocal: Unknown URI: "+ aUri ) ;
 	}
 	
+	private void doRequestToLocal_URI_IMAGE(String contentUri) throws IOException {
+		MainActivity.console( "doRequestGalleryImage:" + contentUri ) ;
+		byte[] buffer = Utils.MediaStoreHelper.getImageContent(this, contentUri);
+		sendResponseFromLocal( buffer );
+	}
+
 	protected void doResponseGallery( RequestCache.Request aRequest, byte[] aContentByteArray) throws UnsupportedEncodingException, JSONException {
 		String content = new String(aContentByteArray, CHARSET);
 		MainActivity.console( "doResponseGallery: content=" + content );
@@ -90,19 +83,22 @@ public class SecureGalleryService extends DataplugService {
 	
 	@Override
 	protected void doResponse(Request aRequest, byte[] aContent) throws Exception {
+		MainActivity.console( "doResponse: uri=" + URLDecoder.decode(aRequest.getUri(), CHARSET));
 		
 		if( aRequest.getUri().equals(URI_GALLERY) ) {
 			doResponseGallery( aRequest, aContent ) ;
 			return ;
 		}
 		if( aRequest.getUri().startsWith(URI_IMAGE) ) {
-			MainActivity.console( "doResponseGalleryImage: uri=" + URLDecoder.decode(aRequest.getUri(), CHARSET));
-			Intent intent = new Intent(this, MainActivity.class);
-			intent.setAction("info.guardianproject.otr.app.im.dataplug.SHOW_IMAGE");
-			intent.setFlags( Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED );
-			intent.putExtra(Api.EXTRA_CONTENT, aContent);
-			startActivity(intent);
+			MainActivity.startActivity_SHOW_IMAGE(this, aContent);
 			return ;
 		}
+	}
+
+	public static void startService(Context aContext, byte[] aContent ) {
+		Intent intent = new Intent(aContext, SecureGalleryService.class);
+		intent.setAction(Api.ACTION_RESPONSE_FROM_LOCAL);
+		intent.putExtra(Api.EXTRA_CONTENT, aContent );
+		aContext.startService(intent);
 	}
 }

@@ -1,9 +1,6 @@
 package info.guardianproject.otr.sample.securegallery;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 
@@ -53,10 +50,6 @@ public class MainActivity extends Activity {
 		if (action.equals( "info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY") ) {
 			doRequestGallery();
 		}
-		if (action.equals( "info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY_IMAGE") ) {
-			doRequestGalleryImage(intent.getExtras().getString(Api.EXTRA_URI));
-			finish();
-		}
 		if (action.equals( "info.guardianproject.otr.app.im.dataplug.SHOW_IMAGE") ) {
 			doResponseGalleryImage(intent.getExtras().getByteArray(Api.EXTRA_CONTENT));
 		}
@@ -69,7 +62,6 @@ public class MainActivity extends Activity {
 		sBuffer=new StringBuffer() ;
 		sHandler = new Handler(Looper.getMainLooper());	
 		console( "Ready" ) ;
-//		doRequestGallery( this);
 	}
 	
 	/*
@@ -97,35 +89,33 @@ public class MainActivity extends Activity {
 	}
 	
 	/**
-	 * @param uri
-	 * @throws IOException 
+	 * @param discoverActivity
+	 * @param bitmap
 	 */
-	private byte[] getByteArray(Uri uri) throws IOException {
-		String path = Utils.MediaStoreHelper.getPath(this, uri);
+	public static void showBitmap( Activity aActivity, final Bitmap bitmap) {
 		
-		File file = new File(path);
-		FileInputStream fis = new FileInputStream(file);
-		long length = file.length() ;
-		byte[] buffer = new byte[ (int) length ];
-				
-		fis.read(buffer);
-		return buffer ;
+		sHandler.post(new Runnable() {
+			
+			@Override
+			public void run() {
+				if( sConsoleImageView != null ) {
+					sConsoleImageView.setImageBitmap(bitmap);
+				}
+			}
+		}) ;
 	}
 
+	
 	private void doRequestGallery() {
 		MainActivity.console( "doRequestGallery" ) ;
 		Intent zIntent = new Intent(Intent.ACTION_PICK);
 		zIntent.setType("image/*");
 		startActivityForResult(zIntent, REQUEST_CODE_GALLERY_LISTING );		
 	}
-
-	private void doRequestGalleryImage(String contentUri) throws IOException {
-		MainActivity.console( "doRequestGalleryImage:" + contentUri ) ;
-		byte[] buffer = Utils.MediaStoreHelper.getImageContent(this, contentUri);
-		Intent intent = new Intent(this, SecureGalleryService.class);
-		intent.setAction(Api.ACTION_RESPONSE_FROM_LOCAL);
-		intent.putExtra(Api.EXTRA_CONTENT, buffer);
-		startService(intent);
+	
+	private void doRequestGalleryResult(Uri aUri) {
+		String content = getGalleryListing( aUri.toString() ) ;
+		SecureGalleryService.startService( this, content.getBytes() );
 	}
 
 	@Override
@@ -138,11 +128,7 @@ public class MainActivity extends Activity {
 				return ;
 			}
 			Uri uri = data.getData() ;
-			String content = getGalleryListing( uri.toString() ) ;
-			Intent intent = new Intent(this, SecureGalleryService.class);
-			intent.setAction(Api.ACTION_RESPONSE_FROM_LOCAL);
-			intent.putExtra(Api.EXTRA_CONTENT, content.getBytes());
-			startService(intent);
+			doRequestGalleryResult( uri );
 			break ;
 		default:
 			Toast.makeText(this, "ERROR: requestCode unknown: " + requestCode, Toast.LENGTH_LONG).show();
@@ -175,20 +161,20 @@ public class MainActivity extends Activity {
 		return ;
 	}
 
-	/**
-	 * @param discoverActivity
-	 * @param bitmap
-	 */
-	public static void showBitmap( Activity aActivity, final Bitmap bitmap) {
-		
-		sHandler.post(new Runnable() {
-			
-			@Override
-			public void run() {
-				if( sConsoleImageView != null ) {
-					sConsoleImageView.setImageBitmap(bitmap);
-				}
-			}
-		}) ;
+	public static void startActivity_REQUEST_GALLERY( Context aContext ) {
+		// repond with : accountid, friendid, requestid, body(json)
+		Intent intent = new Intent(aContext, MainActivity.class);
+		intent.setAction("info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY");
+		intent.setFlags( Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK );
+		aContext.startActivity(intent);
 	}
+	
+	public static void startActivity_SHOW_IMAGE(Context aContext, byte[] aContent) {
+		Intent intent = new Intent(aContext, MainActivity.class);
+		intent.setAction("info.guardianproject.otr.app.im.dataplug.SHOW_IMAGE");
+		intent.setFlags( Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED );
+		intent.putExtra(Api.EXTRA_CONTENT, aContent);
+		aContext.startActivity(intent);
+	}
+
 }

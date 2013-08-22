@@ -44,7 +44,6 @@ public class Utils {
 			byte[] buffer = new byte[ (int) length ];
 					
 			fis.read(buffer);
-			MainActivity.console( "doRequestGalleryImage:" + buffer.length ) ;
 			fis.close();
 			return buffer;
 		}

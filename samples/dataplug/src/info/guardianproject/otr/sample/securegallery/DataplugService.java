@@ -193,7 +193,15 @@ public abstract class DataplugService extends Service {
 			return ;
 		}
 		if( zAction.equals(Api.ACTION_REQUEST_TO_LOCAL ) ) {
-			doRequestToLocal( aIntent ) ;
+			mRequestToLocalExtras = aIntent.getExtras() ;
+			
+			String zUri = aIntent.getStringExtra( Api.EXTRA_URI );
+			if( zUri == null ) {
+				MainActivity.error( this, "RequestToLocal: uri=null" ) ;
+				return ; // TODO error
+			}
+			
+			doRequestToLocal( zUri ) ;
 			return ;
 		}
 		if( zAction.equals(Api.ACTION_RESPONSE_FROM_LOCAL ) ) {
@@ -209,6 +217,6 @@ public abstract class DataplugService extends Service {
 		sendResponseFromLocal(aIntent.getByteArrayExtra(Api.EXTRA_CONTENT));
 	}
 
-	abstract protected void doRequestToLocal(Intent aIntent) throws Exception ;
+	abstract protected void doRequestToLocal(String zUri) throws Exception ;
 
 }
