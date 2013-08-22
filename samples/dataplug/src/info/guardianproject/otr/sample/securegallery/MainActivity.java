@@ -122,7 +122,7 @@ public class MainActivity extends Activity {
 	private void doRequestGalleryImage(String contentUri) throws IOException {
 		MainActivity.console( "doRequestGalleryImage:" + contentUri ) ;
 		byte[] buffer = Utils.MediaStoreHelper.getImageContent(this, contentUri);
-		Intent intent = new Intent(this, DataplugService.class);
+		Intent intent = new Intent(this, SecureGalleryService.class);
 		intent.setAction(Api.ACTION_RESPONSE_FROM_LOCAL);
 		intent.putExtra(Api.EXTRA_CONTENT, buffer);
 		startService(intent);
@@ -139,7 +139,7 @@ public class MainActivity extends Activity {
 			}
 			Uri uri = data.getData() ;
 			String content = getGalleryListing( uri.toString() ) ;
-			Intent intent = new Intent(this, DataplugService.class);
+			Intent intent = new Intent(this, SecureGalleryService.class);
 			intent.setAction(Api.ACTION_RESPONSE_FROM_LOCAL);
 			intent.putExtra(Api.EXTRA_CONTENT, content.getBytes());
 			startService(intent);

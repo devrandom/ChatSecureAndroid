@@ -38,7 +38,7 @@
         </activity>
         
         <!-- Dataplug -->
-        <service android:name=".DataplugService" >
+        <service android:name=".SecureGalleryService" >
             <intent-filter>
                 <action android:name="info.guardianproject.otr.app.im.dataplug.DISCOVER" />
             </intent-filter>
