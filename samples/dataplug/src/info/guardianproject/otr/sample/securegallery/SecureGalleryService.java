@@ -15,8 +15,6 @@
  */
 package info.guardianproject.otr.sample.securegallery;
 
-import info.guardianproject.otr.sample.securegallery.DataplugService.RequestCache.Request;
-
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
@@ -64,7 +62,7 @@ public class SecureGalleryService extends DataplugService {
 		sendResponseFromLocal( buffer );
 	}
 
-	protected void doResponseGallery( RequestCache.Request aRequest, byte[] aContentByteArray) throws UnsupportedEncodingException, JSONException {
+	protected void doResponseGallery( Request aRequest, byte[] aContentByteArray) throws UnsupportedEncodingException, JSONException {
 		String content = new String(aContentByteArray, CHARSET);
 		MainActivity.console( "doResponseGallery: content=" + content );
 		JSONObject jsonObject = new JSONObject( content );
@@ -72,27 +70,27 @@ public class SecureGalleryService extends DataplugService {
 
 		String requestUri = URI_IMAGE + URLEncoder.encode(responseUri, CHARSET);
 
-		sendRequest(aRequest.getAccountId(), aRequest.getFriendId(), requestUri);
+		sendRequest(aRequest.getAccountId(), aRequest.getFriendId(), requestUri, new RequestCallback() {
+			@Override
+			public void onResponse(Request aRequest, byte[] aContent) {
+				MainActivity.startActivity_SHOW_IMAGE(SecureGalleryService.this, aContent);
+			}
+		});
 
 		return ;
 	}
 	
 	protected void doActivate(String aAccountId, String aFriendId) {
-		sendRequest( aAccountId, aFriendId, URI_GALLERY) ;
-	}
-	
-	@Override
-	protected void doResponse(Request aRequest, byte[] aContent) throws Exception {
-		MainActivity.console( "doResponse: uri=" + URLDecoder.decode(aRequest.getUri(), CHARSET));
-		
-		if( aRequest.getUri().equals(URI_GALLERY) ) {
-			doResponseGallery( aRequest, aContent ) ;
-			return ;
-		}
-		if( aRequest.getUri().startsWith(URI_IMAGE) ) {
-			MainActivity.startActivity_SHOW_IMAGE(this, aContent);
-			return ;
-		}
+		sendRequest( aAccountId, aFriendId, URI_GALLERY, new RequestCallback() {
+			@Override
+			public void onResponse(Request aRequest, byte[] aContent) {
+				try {
+					doResponseGallery( aRequest, aContent ) ;
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+			}
+		}) ;
 	}
 
 	public static void startService(Context aContext, byte[] aContent ) {

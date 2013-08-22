@@ -15,8 +15,7 @@
  */
 package info.guardianproject.otr.sample.securegallery;
 
-import info.guardianproject.otr.sample.securegallery.DataplugService.RequestCache.Request;
-
+import java.net.URLDecoder;
 import java.util.UUID;
 
 import org.json.JSONException;
@@ -35,38 +34,49 @@ import com.google.common.cache.CacheBuilder;
  * @author liorsaar
  */
 public abstract class DataplugService extends Service {
+	public static interface RequestCallback {
+		void onResponse(Request aRequest, byte [] aContent);
+	}
+
 	protected static class RequestCache {
-			static class Request {
-				String mAccountId;
-				String mFriendId;
-				String mUri;
-				public Request( String aAccountId, String aFriendId, String aUri) {
-					mAccountId = aAccountId ;
-					mFriendId = aFriendId ;
-					mUri = aUri ;
-				}
-				public String getUri() { return mUri ; }
-				public String getFriendId() { return mFriendId ; }
-				public String getAccountId() { return mAccountId ; }
+		static Cache<String, Request> sCache ;
+
+		public static String create(String aAccountId, String aFriendId, String aUri, RequestCallback aCallback) {
+			if( sCache == null ) {
+				sCache = CacheBuilder.newBuilder().maximumSize(100).build();
 			}
-			
-			static Cache<String, Request> sCache ;
-			
-			public static String create(String aAccountId, String aFriendId, String aUri) {
-				if( sCache == null ) {
-					sCache = CacheBuilder.newBuilder().maximumSize(100).build();
-				}
-				Request request = new Request( aAccountId, aFriendId, aUri);
-				String key = UUID.randomUUID().toString();
-				sCache.put(key, request);
-				return key ;
-			}
-			
-			public static Request get( String aReqestId ) {
-				return sCache.getIfPresent(aReqestId);
-			}
-			
+			Request request = new Request( aAccountId, aFriendId, aUri, aCallback);
+			String key = UUID.randomUUID().toString();
+			sCache.put(key, request);
+			return key ;
 		}
+
+		public static Request get( String aReqestId ) {
+			return sCache.getIfPresent(aReqestId);
+		}
+
+	}
+
+	public static class Request {
+		String mAccountId;
+		String mFriendId;
+		String mUri;
+		RequestCallback mCallback;
+		
+		public Request( String aAccountId, String aFriendId, String aUri, RequestCallback aCallback) {
+			mAccountId = aAccountId ;
+			mFriendId = aFriendId ;
+			mUri = aUri ;
+			mCallback = aCallback;
+		}
+		public String getUri() { return mUri ; }
+		public String getFriendId() { return mFriendId ; }
+		public String getAccountId() { return mAccountId ; }
+		
+		public RequestCallback getCallback() {
+			return mCallback;
+		}
+	}
 
 	public static final String TAG = DataplugService.class.getSimpleName() ;
 
@@ -120,9 +130,9 @@ public abstract class DataplugService extends Service {
 
 	protected static final String CHARSET = "UTF-8";
 
-	protected void sendRequest(String aAccountId, String aFriendId, String aUri) {
+	protected void sendRequest(String aAccountId, String aFriendId, String aUri, RequestCallback aCallback) {
 		
-		String requestId = RequestCache.create( aAccountId, aFriendId, aUri ) ;
+		String requestId = RequestCache.create( aAccountId, aFriendId, aUri, aCallback ) ;
 	
 		MainActivity.console( "sendRequest: EXTRA_URI:" + aUri ) ;
 		Intent zIntent = new Intent();
@@ -141,16 +151,16 @@ public abstract class DataplugService extends Service {
 		String zRequestId = aIntent.getStringExtra(Api.EXTRA_REQUEST_ID);
 		byte[] zContent = aIntent.getByteArrayExtra(Api.EXTRA_CONTENT);
 		
-		RequestCache.Request zRequest = RequestCache.get(zRequestId);
+		Request zRequest = RequestCache.get(zRequestId);
+
 		if( zRequest == null ) {
 			MainActivity.error( this, "Request not found: " + zRequestId ) ;
 			return ;
 		}
 		
-		doResponse( zRequest, zContent ) ;
+		MainActivity.console( "doResponse: uri=" + URLDecoder.decode(zRequest.getUri(), CHARSET));
+		zRequest.getCallback().onResponse(zRequest, zContent);
 	}
-
-	abstract protected void doResponse(Request aRequest, byte[] aContent) throws Exception ;
 
 	/**
 	 * @param requestGalleryListing
