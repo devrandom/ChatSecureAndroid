@@ -34,6 +34,7 @@ public class Api {
 	public static final String EXTRA_CONTENT = "Content";
 	public static final String EXTRA_REQUEST = "Request";
 	public static final String EXTRA_RESPONSE = "Response";
+	public static final String EXTRA_HEADERS = "Headers";
 	
 	public static final String EXTRA_ACTION = "Action";
 	public static final String ACTION_RENDER = "Render";

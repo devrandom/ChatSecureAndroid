@@ -101,4 +101,11 @@ public class SecureGalleryService extends DataplugService {
 		intent.putExtra(Api.EXTRA_REQUEST_ID, aRequestId);
 		aContext.startService(intent);
 	}
+
+	private static final String REGISTRATION = "{ 'descriptor': 	{ 'uri': 'chatsecure:/gallery', 'name': 'Gallery' }, 'meta': { 'publish' : true } }";
+
+	protected String getRegistration() throws JSONException {
+		JSONObject json = new JSONObject( REGISTRATION );				
+		return json.toString() ;
+	}
 }
