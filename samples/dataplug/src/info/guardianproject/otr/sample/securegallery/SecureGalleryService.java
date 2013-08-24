@@ -20,6 +20,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -67,16 +68,21 @@ public class SecureGalleryService extends DataplugService {
 		String content = new String(aContentByteArray, CHARSET);
 		MainActivity.console( "doResponseGallery: content=" + content );
 		JSONObject jsonObject = new JSONObject( content );
-		String responseUri = jsonObject.getString("uri");
+		JSONArray images = jsonObject.getJSONArray("images");
+		for (int i = 0 ; i < images.length() ; i++) {
+			JSONObject image = images.getJSONObject(i);
+			String responseUri = image.getString("uri");
+			int length = (int)image.getLong("length");
 
-		String requestUri = URI_IMAGE + URLEncoder.encode(responseUri, CHARSET);
+			String requestUri = URI_IMAGE + URLEncoder.encode(responseUri, CHARSET);
 
-		sendRequest(aRequest.getAccountId(), aRequest.getFriendId(), requestUri, new RequestCallback() {
-			@Override
-			public void onResponse(Request aRequest, byte[] aContent) {
-				MainActivity.startActivity_SHOW_IMAGE(SecureGalleryService.this, aContent);
-			}
-		});
+			sendTransferRequest(aRequest.getAccountId(), aRequest.getFriendId(), requestUri, length, new TransferCallback() {
+				@Override
+				public void onResponse(Transfer aTransfer, byte[] aContent) {
+					MainActivity.startActivity_SHOW_IMAGE(SecureGalleryService.this, aContent);
+				}
+			});
+		}
 
 		return ;
 	}

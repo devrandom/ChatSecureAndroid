@@ -32,6 +32,16 @@ public class Utils {
 	        return cursor.getString(column_index);
 	    }
 
+		public static long getImageLength(Context aContext, String contentUri)
+				throws FileNotFoundException, IOException {
+			// reading the binary file
+			Uri uri = Uri.parse(contentUri);
+			String path = Utils.MediaStoreHelper.getPath(aContext, uri);
+			
+			File file = new File(path);
+			return file.length();
+		}
+
 		public static byte[] getImageContent(Context aContext, String contentUri)
 				throws FileNotFoundException, IOException {
 			// reading the binary file

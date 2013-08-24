@@ -1,11 +1,17 @@
 package info.guardianproject.otr.sample.securegallery;
 
 import java.io.ByteArrayInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.util.Collection;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import com.google.common.collect.Lists;
 
 import android.app.Activity;
 import android.content.Context;
@@ -117,7 +123,9 @@ public class MainActivity extends Activity {
 	}
 	
 	private void doRequestGalleryResult(Uri aUri) {
-		String content = getGalleryListing( aUri.toString() ) ;
+		Collection<String> uris = Lists.newArrayList();
+		uris.add(aUri.toString());
+		String content = getGalleryListing( uris ) ;
 		SecureGalleryService.startService_RESPONSE_FROM_LOCAL( this, mRequestId, content.getBytes() );
 	}
 
@@ -138,11 +146,24 @@ public class MainActivity extends Activity {
 		}
 	}
 
-	private String getGalleryListing(String aUri) {
+	private String getGalleryListing(Collection<String> aUris) {
 		JSONObject json = new JSONObject();
 		try {
-			json.put( "uri", aUri );
+			JSONArray images = new JSONArray();
+			JSONObject image = new JSONObject();
+			
+			for (String uri : aUris) {
+				image.put( "uri", uri);
+				image.put( "length", Utils.MediaStoreHelper.getImageLength(this, uri));
+				images.put(image);
+			}
+			
+			json.put("images", images);
 		} catch (JSONException e) {
+			throw new RuntimeException(e);
+		} catch (FileNotFoundException e) {
+			throw new RuntimeException(e);
+		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
 		return json.toString();
