@@ -275,10 +275,22 @@ public class OtrDataHandler implements DataHandler {
     }
 
     private void sendResponse(Address us, int code, String statusString, String uid, byte[] body) {
+        sendResponse(us, code, statusString, uid, body, null);
+    }
+    
+    private void sendResponse(Address us, int code, String statusString, String uid, byte[] body, String headersString) {
         MemorySessionOutputBuffer outBuf = new MemorySessionOutputBuffer();
         HttpMessageWriter writer = new HttpResponseWriter(outBuf, lineFormatter, params);
+        
         HttpMessage response = new BasicHttpResponse(new BasicStatusLine(PROTOCOL_VERSION, code, statusString));
         response.addHeader("Request-Id", uid);
+        if (headersString != null) {
+            Map<String, String> headers = Maps.newHashMap();
+            naiveHeadersParse(headersString, headers);
+            for (Entry<String, String> entry : headers.entrySet()) {
+                response.addHeader(entry.getKey(), entry.getValue());
+            }
+        }
         try {
             writer.write(response);
             if (body != null)
@@ -598,11 +610,8 @@ public class OtrDataHandler implements DataHandler {
     }
 
     @Override
-    public void sendDataResponse(Address us, int code, String statusString, String requestId, byte[] content) {
-        Map<String, String> headers;
-        headers = Maps.newHashMap();
-        headers.put("Request-Id", requestId);
-        sendResponse(us, code, statusString, requestId, content);
+    public void sendDataResponse(Address us, int code, String statusString, String requestId, byte[] content, String headersString) {
+        sendResponse(us, code, statusString, requestId, content, headersString);
     }
 
 }

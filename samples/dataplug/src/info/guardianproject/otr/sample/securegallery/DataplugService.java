@@ -15,6 +15,8 @@
  */
 package info.guardianproject.otr.sample.securegallery;
 
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.net.URLDecoder;
 import java.util.Set;
 import java.util.UUID;
@@ -42,11 +44,12 @@ public abstract class DataplugService extends Service {
 	public static final String TAG = DataplugService.class.getSimpleName() ;
 
 	public static interface RequestCallback {
-		void onResponse(Request aRequest, byte [] aContent);
+		void onResponse(Request aRequest, byte [] aContent, String headersString);
 	}
 
 	public static interface TransferCallback {
-		void onResponse(Transfer aTransfer, byte [] aContent);
+		void onResponse(Transfer aTransfer);
+		RandomAccessFile openFile(Transfer aTransfer);
 	}
 
 	RequestCache mOutgoingCache = new RequestCache();
@@ -77,7 +80,8 @@ public abstract class DataplugService extends Service {
         private int length = 0;
         private int current = 0;
         private Set<Request> outstanding; 
-        private byte[] buffer;
+        private RandomAccessFile mStream;
+        private String mSum;
 
         private TransferCallback mCallback;
         
@@ -93,7 +97,6 @@ public abstract class DataplugService extends Service {
                 throw new RuntimeException("Invalid transfer size " + length);
             }
             chunks = ((length - 1) / MAX_CHUNK_LENGTH) + 1;
-            buffer = new byte[length];
             outstanding = Sets.newHashSet();
         }
         
@@ -110,13 +113,27 @@ public abstract class DataplugService extends Service {
 
                 Request request = sendRequest(mAccountId, mFriendId, mUri, rangeHeader, new RequestCallback() {
                 	@Override
-                	public void onResponse(Request aRequest, byte[] aContent) {
-                		chunkReceived(aRequest, aContent);
-                		if (isDone()) {
-                			mCallback.onResponse(Transfer.this, buffer);
-                		} else {
-                			perform();
-                		}
+                	public void onResponse(Request aRequest, byte[] aContent, String headersString) {
+                		if (mStream == null)
+                			mStream = mCallback.openFile(Transfer.this);
+                		parseSumHeader(headersString);
+                		try {
+							chunkReceived(aRequest, aContent);
+							info("Received chunk " + chunksReceived + " of " + chunks);
+							if (isDone()) {
+								if (checkSum()) {
+									info("Correct checksum " + mSum);
+									mCallback.onResponse(Transfer.this);
+								}
+								else {
+									error("Incorrect checksum");
+								}
+							} else {
+								perform();
+							}
+						} catch (IOException e) {
+							throw new RuntimeException(e);
+						}
                 	}
                 });
                 request.setRange(current, end);
@@ -126,15 +143,40 @@ public abstract class DataplugService extends Service {
             return true;
         }
         
+        public boolean checkSum() throws IOException {
+        	mStream.getChannel().position(0);
+            return mSum.equals(Utils.sha1sum(mStream.getChannel()));
+        }
+
         public boolean isDone() {
             return chunksReceived == chunks;
         }
         
-        public void chunkReceived(Request request, byte[] bs) {
+        public void chunkReceived(Request request, byte[] bs) throws IOException {
             chunksReceived++;
-            System.arraycopy(bs, 0, buffer, request.getStart(), bs.length);
+            mStream.getChannel().position(request.mStart);
+            mStream.write(bs);
+
             outstanding.remove(request);
         }
+
+		private void parseSumHeader(String headersString) {
+			String header = null;
+            String[] headers = headersString.split("\n");
+            for (int i = 0 ; i < headers.length ; i++) {
+				if (headers[i].startsWith("File-Hash-SHA1:")) {
+					header = headers[i].split(":", 2)[1].trim();
+					break;
+				}
+			}
+			if (header == null)
+				return;
+			mSum = header;
+		}
+		
+		public int getLength() {
+			return length;
+		}
     }
 
     public static class Request {
@@ -153,6 +195,10 @@ public abstract class DataplugService extends Service {
 			this(UUID.randomUUID().toString(), aAccountId, aFriendId, aUri, aCallback);
 		}
 		
+		public String[] getHeaders() {
+			return mHeaders;
+		}
+
 		public int getStart() {
 			return mStart;
 		}
@@ -244,24 +290,24 @@ public abstract class DataplugService extends Service {
 		try {
 			handleIntent( aIntent ) ;
 		} catch (Throwable e) {
-			MainActivity.error( this, e.getMessage() ) ;
+			error( e.getMessage() ) ;
 		}
 		return START_NOT_STICKY;
 	}
 
 	protected void doDiscover(Intent aIntent) throws JSONException {
 		String token = aIntent.getStringExtra( Api.EXTRA_TOKEN );
-		MainActivity.console( "doDiscover: " + token ) ; // FIXME logging
+		info( "doDiscover: " + token );
 		if( token == null ) {
-			MainActivity.error( this, "doDiscover: token=null" ) ;
+			error( "doDiscover: token=null" ) ;
 			return ;
 		}
-		MainActivity.console( "doDiscover: token=" + token ) ;
+		info( "doDiscover: token=" + token ) ;
 		sendRegistration( token ) ;
 	}
 
 	private void sendRegistration(String token) throws JSONException {
-		MainActivity.console( "sendRegistration" ) ;
+		info( "sendRegistration" ) ;
 		Intent zIntent = new Intent();
 		zIntent.setAction(Api.ACTION_REGISTER) ;
 		zIntent.putExtra( Api.EXTRA_TOKEN , token ) ;
@@ -276,7 +322,7 @@ public abstract class DataplugService extends Service {
 	private void doActivate(Intent aIntent) {
 		String zFriendId = aIntent.getStringExtra(Api.EXTRA_FRIEND_ID);
 		String zAccountId = aIntent.getStringExtra(Api.EXTRA_ACCOUNT_ID);
-		MainActivity.console( "doActivate: Friend:" + zFriendId ) ;
+		info( "doActivate: Friend:" + zFriendId ) ;
 		doActivate(zAccountId, zFriendId);
 	}
 	
@@ -296,7 +342,7 @@ public abstract class DataplugService extends Service {
 		Request request = new Request( aAccountId, aFriendId, aUri, aCallback );
 		mOutgoingCache.put(request) ;
 	
-		MainActivity.console( "sendRequest: EXTRA_URI:" + aUri ) ;
+		info( "sendRequest: EXTRA_URI:" + aUri ) ;
 		Intent zIntent = new Intent();
 		zIntent.setAction(Api.ACTION_REQUEST) ;
 		zIntent.putExtra( Api.EXTRA_METHOD , "GET" ) ;
@@ -311,24 +357,29 @@ public abstract class DataplugService extends Service {
 
 	protected void doResponse(Intent aIntent) throws Exception {
 		String zFriendId = aIntent.getStringExtra(Api.EXTRA_FRIEND_ID);
-		MainActivity.console( "doResponse: EXTRA_FRIEND_ID:" + zFriendId );
+		info( "doResponse: EXTRA_FRIEND_ID:" + zFriendId );
 		String zRequestId = aIntent.getStringExtra(Api.EXTRA_REQUEST_ID);
 		byte[] zContent = aIntent.getByteArrayExtra(Api.EXTRA_CONTENT);
+		String headers = aIntent.getStringExtra(Api.EXTRA_HEADERS);
 		
 		Request zRequest = mOutgoingCache.get(zRequestId);
 
 		if( zRequest == null ) {
-			MainActivity.error( this, "Request not found: " + zRequestId ) ;
+			error("Request not found: " + zRequestId ) ;
 			return ;
 		}
 		
-		MainActivity.console( "doResponse: uri=" + URLDecoder.decode(zRequest.getUri(), CHARSET));
-		zRequest.getCallback().onResponse(zRequest, zContent);
+		info( "doResponse: uri=" + URLDecoder.decode(zRequest.getUri(), CHARSET));
+		zRequest.getCallback().onResponse(zRequest, zContent, headers);
 	}
 
 	protected void sendResponseFromLocal(String aRequestId, byte[] aContent) {
+		this.sendResponseFromLocal(aRequestId, aContent, null);
+	}
+	
+	protected void sendResponseFromLocal(String aRequestId, byte[] aContent, String aHeaders) {
 		// respond with : accountid, friendid, requiestid, body(json)
-		MainActivity.console( "sendResponseFromLocal: content=" + aContent ) ;
+		info( "sendResponseFromLocal: content len " + aContent.length ) ;
 		Intent zIntent = new Intent();
 		zIntent.setAction(Api.ACTION_RESPONSE_FROM_LOCAL) ;
 		Request request = mIncomingCache.get(aRequestId);
@@ -336,6 +387,7 @@ public abstract class DataplugService extends Service {
 		zIntent.putExtra( Api.EXTRA_FRIEND_ID , request.getFriendId() ) ;
 		zIntent.putExtra( Api.EXTRA_REQUEST_ID , request.getId() ) ;
 		zIntent.putExtra( Api.EXTRA_CONTENT, aContent ) ;
+		zIntent.putExtra( Api.EXTRA_HEADERS, aHeaders ) ;
 		startService( zIntent ) ;
 	}
 
@@ -346,7 +398,7 @@ public abstract class DataplugService extends Service {
 
 	void handleIntent(Intent aIntent) throws Exception {
 		String zAction = aIntent.getAction();
-		MainActivity.console( "handleIntent: "+zAction ) ;
+		info( "handleIntent: "+zAction ) ;
 		if( zAction == null ) {
 			return ;
 		}
@@ -375,7 +427,7 @@ public abstract class DataplugService extends Service {
 			mIncomingCache.put(request) ;
 			
 			if( request.getUri() == null ) {
-				MainActivity.error( this, "RequestToLocal: uri=null" ) ;
+				error( "RequestToLocal: uri=null" ) ;
 				return ; // TODO error
 			}
 			
@@ -386,7 +438,7 @@ public abstract class DataplugService extends Service {
 			doResponseFromLocal( aIntent ) ;
 			return ;
 		}
-		MainActivity.error( this, "Unknown action " + zAction ) ;
+		error( "Unknown action " + zAction ) ;
 	}
 	
 	protected void doResponseFromLocal(Intent aIntent) {
@@ -395,4 +447,11 @@ public abstract class DataplugService extends Service {
 
 	abstract protected void doRequestToLocal(Request aRequest) throws Exception ;
 
+	private void error(String message) {
+		MainActivity.error( this, message ) ;
+	}
+
+	private void info(String message) {
+		MainActivity.console( message ) ;
+	}
 }

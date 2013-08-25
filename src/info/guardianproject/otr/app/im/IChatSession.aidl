@@ -102,7 +102,7 @@ interface IChatSession {
     /**
      * Sends data request to peer
      */
-    void sendDataResponse(int code, String statusString, String requestId, in byte[] content);
+    void sendDataResponse(int code, String statusString, String requestId, in byte[] content, String headers);
 
     /**
      * Mark this chat session as read.

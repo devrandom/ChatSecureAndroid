@@ -32,7 +32,7 @@ public class DataPlugger {
             return false;
         }
         try {
-            chatSession.sendDataResponse(response.getCode(), response.getStatusString(), response.getRequestId(), response.getContent());
+            chatSession.sendDataResponse(response.getCode(), response.getStatusString(), response.getRequestId(), response.getContent(), response.getHeaders());
         } catch (RemoteException e) {
             Log.e(Api.DATAPLUG_TAG, "Could not send response");
             return false;

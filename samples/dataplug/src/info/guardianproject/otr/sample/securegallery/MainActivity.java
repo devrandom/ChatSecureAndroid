@@ -79,6 +79,8 @@ public class MainActivity extends Activity {
 	 * UI output
 	 */
 	public static void console( final String aMessage ) {
+		if (aMessage == null)
+			throw new NullPointerException();
 		Log.w(TAG, aMessage ) ;
 		sHandler.post(new Runnable() {
 			@Override

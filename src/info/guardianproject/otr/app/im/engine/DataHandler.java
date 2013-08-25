@@ -57,5 +57,5 @@ public interface DataHandler {
      * @param requestId
      * @param content
      */
-    void sendDataResponse(Address us, int code, String statusString, String requestId, byte[] content);
+    void sendDataResponse(Address us, int code, String statusString, String requestId, byte[] content, String headers);
 }

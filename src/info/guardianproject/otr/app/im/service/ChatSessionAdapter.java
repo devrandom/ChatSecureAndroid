@@ -637,13 +637,13 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
                 try {
                     mRemotePluginDescriptors = Discoverer.parseDiscoveryPayload(new String(body, "UTF-8"));
                 } catch (UnsupportedEncodingException e) {
-                    mDataHandler.sendDataResponse(mLocalUser, 400, "Bad UTF-8", requestId, null);
+                    mDataHandler.sendDataResponse(mLocalUser, 400, "Bad UTF-8", requestId, null, null);
                     return true;
                 } catch (JSONException e) {
-                    mDataHandler.sendDataResponse(mLocalUser, 400, "Bad JSON", requestId, null);
+                    mDataHandler.sendDataResponse(mLocalUser, 400, "Bad JSON", requestId, null, null);
                     return true;
                 }
-                mDataHandler.sendDataResponse(mLocalUser, 200, "OK", requestId, null);
+                mDataHandler.sendDataResponse(mLocalUser, 200, "OK", requestId, null, null);
                 return true;
             } else {
                 PluggerRequest request = new PluggerRequest();
@@ -919,13 +919,13 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
     }
 
     @Override
-    public void sendDataResponse(int code, String statusString, String requestId, byte[] content) throws RemoteException {
+    public void sendDataResponse(int code, String statusString, String requestId, byte[] content, String headers) throws RemoteException {
         if (mConnection.getState() == ImConnection.SUSPENDED) {
             // TODO send later
             return;
         }
 
-        mDataHandler.sendDataResponse(mConnection.getLoginUser().getAddress(), code, statusString, requestId, content);
+        mDataHandler.sendDataResponse(mConnection.getLoginUser().getAddress(), code, statusString, requestId, content, headers);
     }
 
     @Override
