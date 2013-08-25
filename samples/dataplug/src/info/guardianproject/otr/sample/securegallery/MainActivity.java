@@ -37,6 +37,8 @@ public class MainActivity extends Activity {
 	private static Handler sHandler = new Handler(Looper.getMainLooper());	
 	private static ImageView sConsoleImageView ;
 
+	private static byte[] sContent;
+
 	public static final int REQUEST_CODE_GALLERY_LISTING = 6661;
 
 	private String mRequestId;
@@ -60,7 +62,7 @@ public class MainActivity extends Activity {
 			doRequestGallery();
 		}
 		if (action.equals( "info.guardianproject.otr.app.im.dataplug.SHOW_IMAGE") ) {
-			doResponseGalleryImage(intent.getExtras().getByteArray(Api.EXTRA_CONTENT));
+			doResponseGalleryImage(sContent);
 		}
 	}
 
@@ -198,7 +200,7 @@ public class MainActivity extends Activity {
 		Intent intent = new Intent(aContext, MainActivity.class);
 		intent.setAction("info.guardianproject.otr.app.im.dataplug.SHOW_IMAGE");
 		intent.setFlags( Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED );
-		intent.putExtra(Api.EXTRA_CONTENT, aContent);
+		sContent = aContent;
 		aContext.startActivity(intent);
 	}
 

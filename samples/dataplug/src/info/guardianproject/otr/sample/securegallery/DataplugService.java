@@ -114,9 +114,12 @@ public abstract class DataplugService extends Service {
                 		chunkReceived(aRequest, aContent);
                 		if (isDone()) {
                 			mCallback.onResponse(Transfer.this, buffer);
+                		} else {
+                			perform();
                 		}
                 	}
                 });
+                request.setRange(current, end);
                 outstanding.add(request);
                 current = end + 1;
             }
