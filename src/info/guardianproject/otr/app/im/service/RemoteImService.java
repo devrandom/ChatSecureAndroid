@@ -18,6 +18,7 @@
 package info.guardianproject.otr.app.im.service;
 
 import info.guardianproject.otr.IOtrKeyManager;
+import info.guardianproject.otr.OtrAndroidKeyManagerImpl;
 import info.guardianproject.otr.OtrChatManager;
 import info.guardianproject.otr.OtrKeyManagerAdapter;
 import info.guardianproject.otr.app.im.IConnectionCreationListener;
@@ -42,6 +43,7 @@ import info.guardianproject.otr.app.im.engine.ImException;
 import info.guardianproject.otr.app.im.plugin.ImPluginInfo;
 import info.guardianproject.otr.app.im.provider.Imps;
 import info.guardianproject.util.Debug;
+import info.guardianproject.util.LogCleaner;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -50,6 +52,7 @@ import java.util.Map;
 import java.util.Vector;
 
 import net.java.otr4j.OtrEngineListener;
+import net.java.otr4j.OtrKeyManager;
 import net.java.otr4j.OtrPolicy;
 import net.java.otr4j.session.SessionID;
 import net.java.otr4j.session.SessionStatus;
@@ -119,11 +122,11 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
     }
 
     public static void debug(String msg) {
-        Log.d(TAG, msg);
+        LogCleaner.debug(TAG, msg);
     }
 
     public static void debug(String msg, Exception e) {
-        Log.e(TAG, msg, e);
+        LogCleaner.error(TAG, msg, e);
     }
 
     private synchronized void initOtr() {
@@ -132,9 +135,17 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
         if (mOtrChatManager == null) {
 
             try {
-                // TODO OTRCHAT add support for more than one connection type (this is a kludge)
-                mOtrChatManager = OtrChatManager.getInstance(otrPolicy, this);
-                mOtrChatManager.addOtrEngineListener(this);
+                OtrKeyManager otrKeyManager = OtrAndroidKeyManagerImpl.getInstance(this);
+                if (otrKeyManager != null)
+                {
+                    // TODO OTRCHAT add support for more than one connection type (this is a kludge)
+                    mOtrChatManager = OtrChatManager.getInstance(otrPolicy, this, otrKeyManager);
+                    mOtrChatManager.addOtrEngineListener(this);
+                }
+                else
+                {
+                    debug("OtrKeyManager NOT INIT'd; is key null?");
+                }
             } catch (Exception e) {
                 debug("can't get otr manager", e);
             }
@@ -205,11 +216,9 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
         // Have the heartbeat start autoLogin, unless onStart turns this off
         mNeedCheckAutoLogin = true;
 
-        //  if (getGlobalSettings().getUseForegroundPriority())
-        startForegroundCompat();
-        
-        
-        // DATAPLUG
+      //  if (getGlobalSettings().getUseForegroundPriority())
+            startForegroundCompat();
+
         Discoverer.getInstance(this).discoverDataPlugs();
 
     }
@@ -500,8 +509,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
     }
 
     public OtrChatManager getOtrChatManager() {
-        initOtr();
-
+        initOtr() ;
         return mOtrChatManager;
     }
 
@@ -519,6 +527,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
     }
 
     IImConnection createConnection(long providerId, long accountId) {
+        
         Map<String, String> settings = loadProviderSettings(providerId);
         ConnectionFactory factory = ConnectionFactory.getInstance();
         try {
@@ -626,26 +635,31 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
 
     private final IRemoteImService.Stub mBinder = new IRemoteImService.Stub() {
 
+        @Override
         public List<ImPluginInfo> getAllPlugins() {
             return new ArrayList<ImPluginInfo>(mPluginHelper.getPluginsInfo());
         }
 
+        @Override
         public void addConnectionCreatedListener(IConnectionCreationListener listener) {
             if (listener != null) {
                 mRemoteListeners.register(listener);
             }
         }
 
+        @Override
         public void removeConnectionCreatedListener(IConnectionCreationListener listener) {
             if (listener != null) {
                 mRemoteListeners.unregister(listener);
             }
         }
 
+        @Override
         public IImConnection createConnection(long providerId, long accountId) {
             return RemoteImService.this.createConnection(providerId, accountId);
         }
 
+        @Override
         public List getActiveConnections() {
             ArrayList<IBinder> result = new ArrayList<IBinder>(mConnections.size());
             for (IImConnection conn : mConnections) {
@@ -654,12 +668,21 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
             return result;
         }
 
+        @Override
         public void dismissNotifications(long providerId) {
             mStatusBarNotifier.dismissNotifications(providerId);
         }
 
+        @Override
         public void dismissChatNotification(long providerId, String username) {
             mStatusBarNotifier.dismissChatNotification(providerId, username);
+        }
+        
+        @Override
+        public boolean unlockOtrStore (String password) 
+        {
+            OtrAndroidKeyManagerImpl.setKeyStorePassword(password);
+            return true;
         }
 
         @Override
@@ -667,6 +690,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
             return new OtrKeyManagerAdapter(mOtrChatManager, null, accountId);
         }
         
+        @Override
         public void setKillProcessOnStop (boolean killProcessOnStop)
         {
             mKillProcessOnStop = killProcessOnStop;
@@ -714,8 +738,6 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
 
     @Override
     public void sessionStatusChanged(SessionID sessionID) {
-
-        initOtr();
 
         SessionStatus sStatus = mOtrChatManager.getSessionStatus(sessionID);
 

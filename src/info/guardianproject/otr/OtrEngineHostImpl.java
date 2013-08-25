@@ -19,10 +19,10 @@ import java.util.Hashtable;
 import java.util.List;
 
 import net.java.otr4j.OtrEngineHost;
+import net.java.otr4j.OtrKeyManager;
 import net.java.otr4j.OtrKeyManagerListener;
 import net.java.otr4j.OtrPolicy;
 import net.java.otr4j.session.SessionID;
-import android.widget.Toast;
 
 /*
  * OtrEngineHostImpl is the connects this app and the OtrEngine
@@ -33,19 +33,19 @@ public class OtrEngineHostImpl implements OtrEngineHost {
     private List<ImConnectionAdapter> mConnections;
     private OtrPolicy mPolicy;
 
-    private OtrAndroidKeyManagerImpl mOtrKeyManager;
+    private OtrKeyManager mOtrKeyManager;
 
     private ImService mContext;
 
     private Hashtable<SessionID, String> mSessionResources;
 
-    public OtrEngineHostImpl(OtrPolicy policy, ImService context) throws IOException {
+    public OtrEngineHostImpl(OtrPolicy policy, ImService context, OtrKeyManager otrKeyManager) throws IOException {
         mPolicy = policy;
         mContext = context;
 
         mSessionResources = new Hashtable<SessionID, String>();
 
-        mOtrKeyManager = OtrAndroidKeyManagerImpl.getInstance(context.getApplicationContext());
+        mOtrKeyManager = otrKeyManager;
 
         mOtrKeyManager.addListener(new OtrKeyManagerListener() {
             public void verificationStatusChanged(SessionID session) {
@@ -85,7 +85,7 @@ public class OtrEngineHostImpl implements OtrEngineHost {
 
     public Address appendSessionResource(SessionID session, Address to) {
         String resource = mSessionResources.get(session);
-        return to.appendResource(resource);
+        return to;//.appendResource(resource);
     }
 
     public ImConnectionAdapter findConnection(String localAddress) {
@@ -99,7 +99,7 @@ public class OtrEngineHostImpl implements OtrEngineHost {
         return null;
     }
 
-    public OtrAndroidKeyManagerImpl getKeyManager() {
+    public OtrKeyManager getKeyManager() {
         return mOtrKeyManager;
     }
 
@@ -148,7 +148,7 @@ public class OtrEngineHostImpl implements OtrEngineHost {
 
         Message msg = new Message(body);
 
-        msg.setFrom(connection.getLoginUser().getAddress());
+        msg.setFrom(connection.getLoginUser().getAddress());sessionID.getFullUserID();
         final Address to = chatSessionAdapter.getAdaptee().getParticipant().getAddress();
         msg.setTo(appendSessionResource(sessionID, to));
         msg.setDateTime(new Date());
@@ -166,28 +166,12 @@ public class OtrEngineHostImpl implements OtrEngineHost {
     public void showError(SessionID sessionID, String error) {
         OtrDebugLogger.log(sessionID.toString() + ": ERROR=" + error);
 
-        showToast("ERROR: " + error);
     }
 
     public void showWarning(SessionID sessionID, String warning) {
         OtrDebugLogger.log(sessionID.toString() + ": WARNING=" + warning);
      
-
-        showToast("WARNING: " + warning);
     }
 
-    /*
-    private void showDialog(String title, String msg) {
-        Intent nIntent = new Intent(mContext.getApplicationContext(), WarningDialogActivity.class);
-        nIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-
-        nIntent.putExtra("title", title);
-        nIntent.putExtra("msg", msg);
-
-        mContext.getApplicationContext().startActivity(nIntent);
-    }
-    */
-    private void showToast(String msg) {
-        mContext.showToast(msg, Toast.LENGTH_LONG);
-    }
+    
 }

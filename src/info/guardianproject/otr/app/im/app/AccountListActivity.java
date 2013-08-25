@@ -25,7 +25,9 @@ import info.guardianproject.otr.app.im.R;
 import info.guardianproject.otr.app.im.plugin.xmpp.auth.GTalkOAuth2;
 import info.guardianproject.otr.app.im.provider.Imps;
 import info.guardianproject.otr.app.im.service.ImServiceConstants;
+import info.guardianproject.util.LogCleaner;
 
+import java.io.IOException;
 import java.util.List;
 
 import net.hockeyapp.android.CrashManager;
@@ -45,6 +47,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.RemoteException;
 import android.preference.PreferenceManager;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -122,6 +125,7 @@ public class AccountListActivity extends SherlockListActivity implements View.On
         super.onCreate(icicle);
         
         mCacheWord = new CacheWordActivityHandler(this, (ICacheWordSubscriber)this);
+        ((ImApp)getApplication()).setCacheWord(mCacheWord);
         
         ThemeableActivity.setBackgroundImage(this);
         
@@ -148,7 +152,7 @@ public class AccountListActivity extends SherlockListActivity implements View.On
                
                 if (getListView().getCount() == 0)
                 {
-                    showNewAccountListDialog();
+                    showExistingAccountListDialog();
                 }
                         
                 
@@ -156,17 +160,18 @@ public class AccountListActivity extends SherlockListActivity implements View.On
             
         });
         
-       // checkForUpdates();
+        checkForUpdates();
+        doShowcase();
         
-
-       
+        getWindow().setBackgroundDrawableResource(R.drawable.bgcolor2);
     }
     
     private void doShowcase ()
     {
         ShowcaseView.ConfigOptions co = new ShowcaseView.ConfigOptions();
         co.hideOnClickOutside = true;
-        sv = ShowcaseView.insertShowcaseView(R.id.menu_new_account, this, "Many of You!", "ChatSecure supports accounts on your favorite services, and your own hosted servers as well!", co);
+      //  sv = ShowcaseView.insertShowcaseView(getListView(), this, "Many of You!", "ChatSecure supports accounts on your favorite services, and your own hosted servers as well!", co);
+        
         
       //  sv.setOnShowcaseEventListener(this);
     }
@@ -209,10 +214,6 @@ public class AccountListActivity extends SherlockListActivity implements View.On
         
         checkForCrashes();
         
-        if (getIntent().hasExtra("EXIT"))
-        {
-            handlePanic();
-        }
     }
     
     
@@ -222,7 +223,7 @@ public class AccountListActivity extends SherlockListActivity implements View.On
         mProviderCursor.moveToPosition(position);
 
         if (mProviderCursor.isNull(ACTIVE_ACCOUNT_ID_COLUMN)) {
-            showNewAccountListDialog();
+            showExistingAccountListDialog();
             
         } else {
 
@@ -270,7 +271,6 @@ public class AccountListActivity extends SherlockListActivity implements View.On
             return;
         }
 
-        
         mProviderCursor.moveToFirst();
         while (!mProviderCursor.isAfterLast())
         {
@@ -312,20 +312,22 @@ public class AccountListActivity extends SherlockListActivity implements View.On
     }
  
     private void signOutAll() {
-      
-        
-        mProviderCursor.moveToPosition(-1);
-        
-        while (mProviderCursor.moveToNext())
+              
+        if (mProviderCursor != null)
         {
-            long accountId = mProviderCursor.getLong(ACTIVE_ACCOUNT_ID_COLUMN);
-            signOut(accountId);
+            mProviderCursor.moveToPosition(-1);
+            
+            while (mProviderCursor.moveToNext())
+            {
+                long accountId = mProviderCursor.getLong(ACTIVE_ACCOUNT_ID_COLUMN);
+                signOut(accountId);
+            }
+                    
+            if (mCacheWord != null)
+                mCacheWord.manuallyLock();
+            
+            finish();
         }
-                
-        if (mCacheWord != null)
-            mCacheWord.manuallyLock();
-        
-        finish();
         
     }
 
@@ -389,8 +391,11 @@ public class AccountListActivity extends SherlockListActivity implements View.On
         case R.id.menu_sign_out_all:
             signOutAll();
             return true;
-        case R.id.menu_new_account:
-            showNewAccountListDialog();
+        case R.id.menu_existing_account:
+            showExistingAccountListDialog();
+            return true;
+        case R.id.menu_create_account:
+            showSetupAccountForm(helper.getProviderNames().get(0), null, null, true);
             return true;
         case R.id.menu_settings:
             Intent sintent = new Intent(this, SettingActivity.class);
@@ -417,7 +422,7 @@ public class AccountListActivity extends SherlockListActivity implements View.On
         boolean doKeyStoreImport = OtrAndroidKeyManagerImpl.checkForKeyImport(getIntent(), this);
 
     }
-    private void showNewAccountListDialog() {
+    private void showExistingAccountListDialog() {
       
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(R.string.account_select_type);
@@ -444,7 +449,7 @@ public class AccountListActivity extends SherlockListActivity implements View.On
                 else
                 {
                     //otherwise support the actual plugin-type
-                    showSetupAccountForm(mAccountList[pos],null, null);
+                    showSetupAccountForm(mAccountList[pos],null, null, false);
                 }
             }
         });
@@ -494,7 +499,7 @@ private Handler mHandlerGoogleAuth = new Handler ()
                            String password = GTalkOAuth2.NAME + ':' + GTalkOAuth2.getGoogleAuthTokenAllow(mNewUser, getApplicationContext(), AccountListActivity.this,mHandlerGoogleAuth);
                    
                            //use the XMPP type plugin for google accounts, and the .NAME "X-GOOGLE-TOKEN" as the password
-                            showSetupAccountForm(helper.getProviderNames().get(0), mNewUser,password);
+                            showSetupAccountForm(helper.getProviderNames().get(0), mNewUser,password, false);
                         }
                     };
                     thread.start();
@@ -506,7 +511,7 @@ private Handler mHandlerGoogleAuth = new Handler ()
 
     }
     
-    public void showSetupAccountForm (String providerType, String username, String token)
+    public void showSetupAccountForm (String providerType, String username, String token, boolean createAccount)
     {
         long providerId = helper.createAdditionalProvider(providerType);//xmpp
         ((ImApp)getApplication()).resetProviderSettings(); //clear cached provider list
@@ -522,6 +527,8 @@ private Handler mHandlerGoogleAuth = new Handler ()
         
         if (token != null)
             intent.putExtra("newpass", token);
+        
+        intent.putExtra("register", createAccount);
         
         startActivity(intent);
     }
@@ -757,16 +764,25 @@ private Handler mHandlerGoogleAuth = new Handler ()
         
         if (requestCode == SCAN_REQUEST_CODE)
         {
-            boolean success = OtrAndroidKeyManagerImpl.handleKeyScanResult(requestCode, resultCode, data, this);
-            
-            if (success)
+            try
             {
-                Toast.makeText(this, R.string.successfully_imported_otr_keyring, Toast.LENGTH_SHORT).show();
+                boolean success = OtrAndroidKeyManagerImpl.getInstance(this).handleKeyScanResult(requestCode, resultCode, data, this, null);
+                
+                if (success)
+                {
+                    Toast.makeText(this, R.string.successfully_imported_otr_keyring, Toast.LENGTH_SHORT).show();
+                }
+                else
+                {
+                    Toast.makeText(this, R.string.otr_keyring_not_imported_please_check_the_file_exists_in_the_proper_format_and_location, Toast.LENGTH_SHORT).show();
+        
+                }
             }
-            else
+            catch (IOException ioe)
             {
                 Toast.makeText(this, R.string.otr_keyring_not_imported_please_check_the_file_exists_in_the_proper_format_and_location, Toast.LENGTH_SHORT).show();
-    
+
+                LogCleaner.error(ImApp.LOG_TAG, "problem importing key",ioe);
             }
         }
     }
@@ -796,18 +812,21 @@ private Handler mHandlerGoogleAuth = new Handler ()
 
         int defaultTimeout = Integer.parseInt(prefs.getString("pref_cacheword_timeout",ImApp.DEFAULT_TIMEOUT_CACHEWORD));
         
-        mCacheWord.setTimeoutMinutes(defaultTimeout);   
+        mCacheWord.setTimeoutMinutes(defaultTimeout);  
         
-        initProviderCursor ();
+        
+        String pkey = SQLCipherOpenHelper.encodeRawKey(mCacheWord.getEncryptionKey());
+
+            
+        initProviderCursor (pkey);
         
     }
     
     
-    private void initProviderCursor ()
+    private void initProviderCursor (String pkey)
     {
-        String pkey = SQLCipherOpenHelper.encodeRawKey(mCacheWord.getEncryptionKey());
         Uri uri = Imps.Provider.CONTENT_URI_WITH_ACCOUNT;
-        
+
         uri = uri.buildUpon().appendQueryParameter(ImApp.CACHEWORD_PASSWORD_KEY, pkey).build();
       
         mProviderCursor = managedQuery(uri, PROVIDER_PROJECTION,

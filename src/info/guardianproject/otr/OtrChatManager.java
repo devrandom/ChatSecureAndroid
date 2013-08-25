@@ -17,6 +17,7 @@ import java.util.List;
 import net.java.otr4j.OtrEngineImpl;
 import net.java.otr4j.OtrEngineListener;
 import net.java.otr4j.OtrException;
+import net.java.otr4j.OtrKeyManager;
 import net.java.otr4j.OtrPolicy;
 import net.java.otr4j.OtrPolicyImpl;
 import net.java.otr4j.session.OtrSm;
@@ -42,9 +43,10 @@ public class OtrChatManager implements OtrEngineListener, OtrSmEngineHost {
 
     private ImService mContext;
 
-    private OtrChatManager(int otrPolicy, ImService context) throws Exception {
+    private OtrChatManager(int otrPolicy, ImService context, OtrKeyManager otrKeyManager) throws Exception {
+        
         mOtrEngineHost = new OtrEngineHostImpl(new OtrPolicyImpl(otrPolicy),
-                context);
+                context, otrKeyManager);
 
         mOtrEngine = new OtrEngineImpl(mOtrEngineHost);
         mOtrEngine.addOtrEngineListener(this);
@@ -55,10 +57,10 @@ public class OtrChatManager implements OtrEngineListener, OtrSmEngineHost {
         mContext = context;
     }
 
-    public static synchronized OtrChatManager getInstance(int otrPolicy, ImService context)
+    public static synchronized OtrChatManager getInstance(int otrPolicy, ImService context, OtrKeyManager otrKeyManager)
             throws Exception {
         if (mInstance == null) {
-            mInstance = new OtrChatManager(otrPolicy, context);
+            mInstance = new OtrChatManager(otrPolicy, context,otrKeyManager);
         }
 
         return mInstance;
@@ -80,7 +82,7 @@ public class OtrChatManager implements OtrEngineListener, OtrSmEngineHost {
         mOtrEngineHost.setSessionPolicy(new OtrPolicyImpl(otrPolicy));
     }
 
-    public OtrAndroidKeyManagerImpl getKeyManager() {
+    public OtrKeyManager getKeyManager() {
         return mOtrEngineHost.getKeyManager();
     }
 

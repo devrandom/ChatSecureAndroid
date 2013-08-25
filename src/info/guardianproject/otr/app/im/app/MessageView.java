@@ -17,10 +17,10 @@
 
 package info.guardianproject.otr.app.im.app;
 
+import info.guardianproject.emoji.EmojiManager;
 import info.guardianproject.otr.app.im.R;
 import info.guardianproject.otr.app.im.provider.Imps;
 
-import java.io.File;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -28,23 +28,16 @@ import java.util.Date;
 
 import android.content.Context;
 import android.content.res.Resources;
-import android.graphics.BitmapFactory;
-import android.graphics.Color;
 import android.graphics.Typeface;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.support.v4.util.LruCache;
-import android.text.Html;
 import android.text.Spannable;
 import android.text.SpannableString;
-import android.text.SpannableStringBuilder;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
 import android.text.style.URLSpan;
 import android.util.AttributeSet;
-import android.util.Base64;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.ImageView;
@@ -119,8 +112,35 @@ public class MessageView extends LinearLayout {
         
         showAvatar(address,true);
         
-       lastMessage = formatMessage(body);
-        mTextViewForMessages.setText(lastMessage);
+        if (showContact)
+        {
+            String[] nickParts = nickname.split("/");
+            
+            lastMessage = nickParts[nickParts.length-1] + ": " + formatMessage(body);
+            
+        }
+        else
+        {
+            lastMessage = formatMessage(body);
+        }
+        
+        if (lastMessage.length() > 0)
+        {
+            try {
+                SpannableString spannablecontent=new SpannableString(lastMessage);
+                EmojiManager.getInstance(getContext()).addEmoji(getContext(), spannablecontent);
+                
+                mTextViewForMessages.setText(spannablecontent);
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        else
+        {
+            mTextViewForMessages.setText(lastMessage);
+        }
+        
         
        mDeliveryIcon.setVisibility(INVISIBLE);
         
@@ -135,22 +155,29 @@ public class MessageView extends LinearLayout {
         }
         else
         {
-            if (showContact)
-            {
-                mTextViewForTimestamp.setText(address);
-            }
-            else
-            {
+            
             mTextViewForTimestamp.setText("");
             mTextViewForTimestamp.setVisibility(View.GONE);
-            }
+           
         }
         
-        mMessageContainer.setBackgroundResource(R.color.incoming_message);
+        if (encryption == EncryptionState.NONE)
+            mMessageContainer.setBackgroundResource(R.color.incoming_message_bg_plaintext);
+        else if (encryption == EncryptionState.ENCRYPTED)
+            mMessageContainer.setBackgroundResource(R.color.incoming_message_bg_encrypted);
+        else if (encryption == EncryptionState.ENCRYPTED_AND_VERIFIED)
+            mMessageContainer.setBackgroundResource(R.color.incoming_message_bg_verified);
+        
+        mTextViewForMessages.setTextColor(getResources().getColor(R.color.incoming_message_fg));
        
 
     }
 
+    private String formatMessage (String body)
+    {
+        return android.text.Html.fromHtml(body).toString();
+    }
+    
     public void bindOutgoingMessage(String address, String body, Date date, Markup smileyRes, boolean scrolling,
             DeliveryState delivery, EncryptionState encryption) {
         
@@ -166,11 +193,19 @@ public class MessageView extends LinearLayout {
         showAvatar(address,false);
     
         
-        lastMessage = formatMessage(body);
-         mTextViewForMessages.setText(lastMessage);
+        lastMessage = body;//formatMessage(body);
          
-     //   mTextViewForMessages.setTextColor(mResources.getColor(R.color.chat_msg));
-        
+         try {
+             SpannableString spannablecontent=new SpannableString(lastMessage);
+
+             EmojiManager.getInstance(getContext()).addEmoji(getContext(), spannablecontent);
+             
+             mTextViewForMessages.setText(spannablecontent);
+         } catch (IOException e) {
+             // TODO Auto-generated catch block
+             e.printStackTrace();
+         }
+         
         if (delivery == DeliveryState.DELIVERED) {
             mDeliveryIcon.setImageResource(R.drawable.ic_chat_msg_status_ok);
             mDeliveryIcon.setVisibility(VISIBLE);
@@ -198,9 +233,14 @@ public class MessageView extends LinearLayout {
 
         }
         
-        mMessageContainer.setBackgroundResource(R.color.outgoing_message);
-        
-        
+        if (encryption == EncryptionState.NONE)
+            mMessageContainer.setBackgroundResource(R.color.incoming_message_bg_plaintext);
+        else if (encryption == EncryptionState.ENCRYPTED)
+            mMessageContainer.setBackgroundResource(R.color.incoming_message_bg_encrypted);
+        else if (encryption == EncryptionState.ENCRYPTED_AND_VERIFIED)
+            mMessageContainer.setBackgroundResource(R.color.incoming_message_bg_verified);
+                  
+        mTextViewForMessages.setTextColor(getResources().getColor(R.color.outgoing_message_fg));
     }
 
     private void showAvatar (String address, boolean isLeft)
@@ -245,44 +285,7 @@ public class MessageView extends LinearLayout {
         mDeliveryIcon.setVisibility(INVISIBLE);
     }
 
-    private CharSequence formatMessage(String body) {
-        
-        /*
-        if (body.indexOf('\r') != -1) {
-            // first convert \r\n pair to \n, then single \r to \n.
-            // here we can't use HideReturnsTransformationMethod because
-            // it does only 1 to 1 transformation and is unable to handle
-            // the "\r\n" case.
-            body = body.replace("\r\n", "\n").replace('\r', '\n');
-        }*/
-
-        //remove HTML tags since we can't display HTML
-       body = body.replaceAll("\\<.*?\\>", "");
-
-        SpannableStringBuilder buf = new SpannableStringBuilder();
-        
-        /*
-
-        if (scrolling) {
-            buf.append(body);
-        } else {
-            
-          //  buf.setSpan(ChatView.STYLE_NORMAL, 0, buf.length(), Spannable.SPAN_INCLUSIVE_EXCLUSIVE);
-            buf.append(body);
-
-           
-        }
-        */
-        
-        buf.append(body);
-        
-        /*
-        if (date != null) {
-            appendTimeStamp(buf, date);
-        }*/
-        
-        return buf;
-    }
+   
 
     private SpannableString formatTimeStamp(Date date) {
     //    DateFormat format = new SimpleDateFormat(mResources.getString(R.string.time_stamp));

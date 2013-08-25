@@ -242,7 +242,7 @@
     <!-- Strings for contacts picker activity to inviting a contact into a group chat. Currently not supported. -->
     <string name="contacts_picker_title">Select contact(s) to invite</string>
     <string name="contact_filter_hint">Type to find contact</string>
-    <string name="empty_contact_list">No contacts found.</string>
+    <string name="empty_contact_list">No contacts found.\n\nTap to invite.</string>
 
     <!-- The title of blocked contact list. -->
     <string name="blocked_list_title">Blocked contacts - <xliff:g id="user">%1$s</xliff:g></string>
@@ -338,9 +338,9 @@
     <string name="send">Send</string>
     <!-- Error message when a chat failed to be sent. -->
     <string name="msg_sent_failed">This message could not be sent.</string>
-    <!-- Warning message displayed in the chat screen when connection is lost. -->
-    <string name="disconnected_warning">Lost connection to server. Messages will be sent when online.</string>
-    <!-- Warning message displayed in the chat screen when the contact is offline. -->
+    <!-- Warning message displayed in the chat screen when connection is lost.-->
+    <string name="disconnected_warning">Messages will be sent on reconnect</string>
+    <!-- Warning message displayed in the chat screen when the contact is offline.-->
     <string name="contact_offline_warning"><xliff:g id="user">%1$s</xliff:g> is offline. Messages you send will be delivered when <xliff:g id="user">%1$s</xliff:g> comes online.</string>
     <!-- Warning message displayed in the chat screen when the contact is not in the user's list. -->
     <string name="contact_not_in_list_warning"><xliff:g id="user">%1$s</xliff:g> is not in your Contact list.</string>
@@ -676,9 +676,9 @@
     <string name="error_suspended_connection">ChatSecure has lost a connection to the network</string>
 	<string name="error_reestablish_connection">ChatSecure is attempting to restablish a connection</string>
 	
-	<string name="otr_session_status_plaintext">Encryption is not enabled</string>
-	<string name="otr_session_status_encrypted">Encryption enabled (Tap to verify)</string>
-	<string name="otr_session_status_finished">Chat encryption has stopped</string>
+	<string name="otr_session_status_plaintext">Encryption is off</string>
+	<string name="otr_session_status_encrypted">Encryption is on (Tap to verify)</string>
+	<string name="otr_session_status_finished">Encryption has been stopped</string>
 	<string name="otr_session_status_verified">Encrypted and verified!</string>
 	
 	<string name="account_wizard_setup_title">Account Wizard</string>
@@ -699,50 +699,64 @@
 
     <!-- Do not localize! Symbols for looking up preferences in Java code. -->
 
-    <string name="account_settings_title">Account Settings</string>
-    <string name="pref_default_locale">defLoc</string>
-    <string name="warning_alpha">WARNING: This is an early release of ChatSecure that may still include security holes or bugs.</string>
+	<string name="account_settings_title">Account Settings</string>
+	<string name="pref_default_locale">defLoc</string>
+	
+	<string name="warning_alpha">WARNING: This is an early release of ChatSecure that may still include security holes or bugs.</string>
 
-    <!-- added 2011/09/01 -->
-    <string name="menu_view_groups">Groups</string>
-    <string name="otr_gen_key">Generating new OTR keypair...</string>
-    <string name="search_label">Contact</string>
-    <string name="search_hint">type the name of a contact to chat with</string>
-    <string name="search_button_text">Go</string>
-    <string name="menu_locale">Language</string>
-    <string name="KEY_PREF_LANGUAGE_TITLE">Languages</string>
-    <string name="KEY_PREF_LANGUAGE_SUMMARY">What language should InTheClear display?</string>
-    <string name="do_srv_lookup">Do SRV Lookup</string>
-    <string name="use_dns_srv_to_find_actual_xmpp_server_from_domain_name">Use DNS SRV to find actual XMPP server from domain name</string>
-    <string name="allow_the_username_and_password_to_be_sent_as_plain_text_when_using_an_unencrypted_transport">Allow the username and password to be sent as plain text when using an unencrypted transport</string>
-    <string name="allow_plain_text_auth">Allow Plain Text Auth</string>
-    <string name="verify_that_the_certificate_is_trusted">Verify that the certificate is trusted</string>
-    <string name="tls_verification">TLS Verification</string>
-    <string name="require_tls_ssl_connection">Require TLS/SSL connection</string>
-    <string name="transport_encryption">Transport Encryption</string>
-    <string name="how_encrypted_chats_are_started">how encrypted chats are started</string>
-    <string name="the_server_to_connect_to_if_needed">The server to connect to, if needed</string>
-    <string name="connect_server">Connect Server</string>
-    <string name="tcp_port_for_xmpp_server">TCP Port for XMPP Server</string>
-    <string name="server_port">Server Port</string>
-    <string name="xmpp_resource">XMPP Resource</string>
-    <string name="to_distinguish_this_connection_from_other_clients_that_are_also_logged_in">to distinguish this connection from other clients that are also logged in</string>
-    <string name="xmpp_resource_prio_title">XMPP Resource Priority</string>
-    <string name="xmpp_resource_prio_summary">Messages to clients with multiple active resources will be sent to the resource with the highest priority</string>
-    <string name="btn_next">Next</string>
-    <string name="btn_back">Back</string>
-    <string name="title_chats">Conversations</string>
-    <string name="new_messages_notify">New message(s) from</string>
-    <string name="smp_question_title">Authentication</string>
-    <string name="smp_question_summary">Enter a question to send to your contact, and the answer you expect them to give, in order to verify they are who they claim to be.</string>
-    <string name="smp_question_hint">the question to ask</string>
-    <string name="qmp_answer_hint">the expected answer</string>
-    <string name="remote_verified_us">Your contact has successfully authenticated you.  Now authenticate your contact by asking your own question.</string>
-    <string name="no_messages">No conversations.\n\nTap here to start one!</string>
-    <string name="pref_theme_dark">Use Dark Theme</string>
-    <string name="warning_tor_connect">Since you are using Tor, you must enter the XMPP \'Connect Server\' hostname directly into Advanced Account Settings</string>
+	<!--  added 2011/09/01 -->
+	<string name="menu_view_groups">Groups</string>
 
-    <!--
+	<string name="otr_gen_key">Generating new OTR keypair...</string>
+	
+	<string name="search_label">Contact</string>
+	<string name="search_hint">type the name of a contact to chat with</string>
+	<string name="search_button_text">Go</string>
+    
+	<string name="menu_locale">Language</string>
+	<string name="KEY_PREF_LANGUAGE_TITLE">Languages</string>
+	<string name="KEY_PREF_LANGUAGE_SUMMARY">What language should InTheClear display?</string>
+	<string name="do_srv_lookup">Do SRV Lookup</string>
+	<string name="use_dns_srv_to_find_actual_xmpp_server_from_domain_name">Use DNS SRV to find actual XMPP server from domain name</string>
+	<string name="allow_the_username_and_password_to_be_sent_as_plain_text_when_using_an_unencrypted_transport">Allow the username and password to be sent as plain text when using an unencrypted transport</string>
+	<string name="allow_plain_text_auth">Allow Plain Text Auth</string>
+	<string name="verify_that_the_certificate_is_trusted">Verify that the certificate is trusted</string>
+	<string name="tls_verification">TLS Verification</string>
+	<string name="require_tls_ssl_connection">Require TLS Connection</string>
+	<string name="transport_encryption">Transport Encryption</string>
+	<string name="how_encrypted_chats_are_started">how encrypted chats are started</string>
+	<string name="the_server_to_connect_to_if_needed">The server to connect to, if needed</string>
+	<string name="connect_server">Connect Server</string>
+	<string name="tcp_port_for_xmpp_server">TCP Port for XMPP Server</string>
+	<string name="server_port">Server Port</string>
+	<string name="xmpp_resource">XMPP Resource</string>
+	<string name="to_distinguish_this_connection_from_other_clients_that_are_also_logged_in">to distinguish this connection from other clients that are also logged in</string>
+	<string name="xmpp_resource_prio_title">XMPP Resource Priority</string>
+	<string name="xmpp_resource_prio_summary">Messages to clients with multiple active resources will be sent to the resource with the highest priority</string>
+
+	<string name="btn_next">Next</string>
+	<string name="btn_back">Back</string>
+	
+	<string name="title_chats">Conversations</string>
+	
+	
+	<string name="new_messages_notify">New message(s) from</string>
+	
+	<string name="smp_question_title">Authentication</string>
+	<string name="smp_question_summary">Enter a question to send to your contact, and the answer you expect them to give, in order to verify they are who they claim to be.</string>
+	
+	<string name="smp_question_hint">the question to ask</string>
+	<string name="qmp_answer_hint">the expected answer</string>
+	<string name="remote_verified_us">Your contact has successfully authenticated you.  Now authenticate your contact by asking your own question.</string>
+
+
+	<string name="no_messages">No conversations.\n\nTap here to start one!</string>
+	
+	<string name="pref_theme_dark">Use Dark Theme</string>
+	
+	<string name="warning_tor_connect">Since you are using Tor, you must enter the XMPP \'Connect Server\' hostname directly into Advanced Account Settings</string>
+	
+	<!-- 
 	<string name="warning_weak_crypto">WARNING: This service uses a certificate with WEAK cryptography. Please tell the administrator to upgrade.</string>
 	
 	<string name="warning_pinned_cert_mismatch">"Provided Certificate Does Not Match PINNED Certifcate: "</string>
@@ -815,4 +829,9 @@
     
     <string name="menu_panic">Panic</string>
     
+    <string name="unable_to_create_or_join_group_chat">Unable to create or join group chat</string>
+    
+    <string name="buddies">Buddies</string>
+    
+    <string name="select_domain_new_account">Choose a domain</string>
 </resources>

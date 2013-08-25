@@ -17,7 +17,8 @@
 
 package info.guardianproject.otr.app.im.app;
 
-import info.guardianproject.cacheword.ICacheWordSubscriber;
+import info.guardianproject.cacheword.CacheWordActivityHandler;
+import info.guardianproject.cacheword.SQLCipherOpenHelper;
 import info.guardianproject.otr.app.Broadcaster;
 import info.guardianproject.otr.app.im.IChatSession;
 import info.guardianproject.otr.app.im.IChatSessionManager;
@@ -34,6 +35,8 @@ import info.guardianproject.otr.app.im.plugin.ImPluginInfo;
 import info.guardianproject.otr.app.im.provider.Imps;
 import info.guardianproject.otr.app.im.service.ImServiceConstants;
 import info.guardianproject.util.AssetUtil;
+import info.guardianproject.util.LogCleaner;
+import info.guardianproject.util.PRNGFixes;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -83,6 +86,8 @@ public class ImApp extends Application {
     public static final String IMPS_CATEGORY = "info.guardianproject.otr.app.im.IMPS_CATEGORY";
     public static final String ACTION_QUIT = "info.guardianproject.otr.app.im.QUIT";
 
+    public static final int DEFAULT_AVATAR_WIDTH = 64;
+    public static final int DEFAULT_AVATAR_HEIGHT = 64;
 
     public static final String HOCKEY_APP_ID = "2fa3b9252319e47367f1f125bb3adcd1";
 
@@ -108,8 +113,8 @@ public class ImApp extends Application {
      */
     ArrayList<Message> mQueue = new ArrayList<Message>();
 
-    /** A flag indicates that we have called to start the service. */
-    private boolean mServiceStarted;
+    /** A flag indicates that we have called tomServiceStarted start the service. */
+//    private boolean mServiceStarted;
     private Context mApplicationContext;
     private Resources mPrivateResources;
 
@@ -219,6 +224,9 @@ public class ImApp extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        
+        PRNGFixes.apply(); //Google's fix for SecureRandom bug: http://android-developers.blogspot.com/2013/08/some-securerandom-thoughts.html
+        
         mBroadcaster = new Broadcaster();
 
         setAppTheme(null);
@@ -347,10 +355,10 @@ public class ImApp extends Application {
         serviceIntent.setComponent(ImServiceConstants.IM_SERVICE_COMPONENT);
         serviceIntent.putExtra(ImServiceConstants.EXTRA_CHECK_AUTO_LOGIN, auto);
         
-        if (!mServiceStarted)
+        if (mImService == null)
         {
             mApplicationContext.startService(serviceIntent);
-            mServiceStarted = true;
+         
             mConnectionListener = new MyConnListener(new Handler());
         }
         
@@ -372,7 +380,7 @@ public class ImApp extends Application {
             hasActiveConnection = !mConnections.isEmpty();
         }
 
-        if (!hasActiveConnection && mServiceStarted) {
+        if (!hasActiveConnection) {
             if (Log.isLoggable(LOG_TAG, Log.DEBUG))
                 log("stop ImService because there's no active connections");
 
@@ -383,7 +391,7 @@ public class ImApp extends Application {
             Intent intent = new Intent();
             intent.setComponent(ImServiceConstants.IM_SERVICE_COMPONENT);
             mApplicationContext.stopService(intent);
-            mServiceStarted = false;
+         
         }
     }
     
@@ -392,7 +400,7 @@ public class ImApp extends Application {
     
     public synchronized void forceStopImService() 
     {
-        if (mServiceStarted && mImService != null) {
+        if (mImService != null) {
             if (Log.isLoggable(LOG_TAG, Log.DEBUG))
                 log("stop ImService");
 
@@ -402,11 +410,32 @@ public class ImApp extends Application {
             Intent intent = new Intent();
             intent.setComponent(ImServiceConstants.IM_SERVICE_COMPONENT);
             mApplicationContext.stopService(intent);
-            mServiceStarted = false;
+         
         }
     }
     
   
+    private CacheWordActivityHandler mCacheWord;
+
+    public void setCacheWord ( CacheWordActivityHandler cacheWord)
+    {
+        mCacheWord = cacheWord;
+    }
+    
+    public void initOtrStoreKey ()
+    {
+        if ( getRemoteImService() != null)
+        {
+            String pkey = SQLCipherOpenHelper.encodeRawKey(mCacheWord.getEncryptionKey());
+    
+            try {
+               getRemoteImService().unlockOtrStore(pkey);
+             } catch (RemoteException e) {
+               
+                 LogCleaner.error(ImApp.LOG_TAG, "eror initializing otr key", e);
+             }
+        }
+    }
 
     private ServiceConnection mImServiceConn = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder service) {
@@ -415,6 +444,9 @@ public class ImApp extends Application {
 
             mImService = IRemoteImService.Stub.asInterface(service);
             fetchActiveConnections();
+            
+            if (mCacheWord != null && mCacheWord.getEncryptionKey() != null)
+                initOtrStoreKey();
 
             synchronized (mQueue) {
                 for (Message msg : mQueue) {
@@ -717,6 +749,25 @@ public class ImApp extends Application {
         }
     }
 
+    public void deleteAccount (long accountId, long providerId)
+    {
+        ContentResolver resolver = getContentResolver();
+        
+        Uri accountUri = ContentUris.withAppendedId(Imps.Account.CONTENT_URI, accountId);
+        resolver.delete(accountUri, null, null);
+        
+        Uri providerUri = ContentUris.withAppendedId(Imps.Provider.CONTENT_URI, providerId);
+        resolver.delete(providerUri, null, null);
+      
+        Uri.Builder builder = Imps.Contacts.CONTENT_URI_CONTACTS_BY.buildUpon();
+        ContentUris.appendId(builder, providerId);
+        ContentUris.appendId(builder, accountId);        
+        resolver.delete(builder.build(), null, null);
+        
+        
+        
+    }
+    
     public void removePendingCall(Handler target) {
         synchronized (mQueue) {
             Iterator<Message> iter = mQueue.iterator();

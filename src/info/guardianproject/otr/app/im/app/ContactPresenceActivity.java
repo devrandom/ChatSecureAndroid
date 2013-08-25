@@ -21,6 +21,7 @@ import info.guardianproject.otr.IOtrChatSession;
 import info.guardianproject.otr.IOtrKeyManager;
 import info.guardianproject.otr.OtrAndroidKeyManagerImpl;
 import info.guardianproject.otr.app.im.IChatSession;
+import info.guardianproject.otr.app.im.IImConnection;
 import info.guardianproject.otr.app.im.R;
 import info.guardianproject.otr.app.im.plugin.BrandingResourceIDs;
 import info.guardianproject.otr.app.im.provider.Imps;
@@ -95,20 +96,7 @@ public class ContactPresenceActivity extends ThemeableActivity {
         }
 
        
-        if (i.getExtras() != null) {
-            remoteFingerprint = i.getExtras().getString("remoteFingerprint");
-
-            if (remoteFingerprint != null) {
-                remoteFingerprint = remoteFingerprint.toUpperCase(Locale.ENGLISH);
-                
-                remoteFingerprintVerified = i.getExtras().getBoolean("remoteVerified");
-                localFingerprint = i.getExtras().getString("localFingerprint");
-                
-                if (localFingerprint != null)
-                    localFingerprint = localFingerprint.toUpperCase(Locale.ENGLISH);
-            }
-
-        }
+      
 
 
         ContentResolver cr = getContentResolver();
@@ -128,25 +116,13 @@ public class ContactPresenceActivity extends ThemeableActivity {
             String customStatus = c.getString(c
                     .getColumnIndexOrThrow(Imps.Contacts.PRESENCE_CUSTOM_STATUS));
             
-            try {
-                OtrAndroidKeyManagerImpl keyManager = OtrAndroidKeyManagerImpl.getInstance(this.getApplicationContext());
-                
-                remoteFingerprintVerified = keyManager.isVerifiedUser(remoteAddress);
-                
-                if (remoteFingerprintVerified)
-                    remoteFingerprint = keyManager.getRemoteFingerprint(remoteAddress);
-                
-            } catch (IOException e) {
-               Log.e(TAG,"error reading key data",e);
-            }
-            
             
 
             BrandingResources brandingRes = mApp.getBrandingResource(providerId);
             setTitle(brandingRes.getString(BrandingResourceIDs.STRING_CONTACT_INFO_TITLE));
 
             Drawable avatar = DatabaseUtils.getAvatarFromCursor(c,
-                    c.getColumnIndexOrThrow(Imps.Contacts.AVATAR_DATA));
+                    c.getColumnIndexOrThrow(Imps.Contacts.AVATAR_DATA),ImApp.DEFAULT_AVATAR_WIDTH*2,ImApp.DEFAULT_AVATAR_HEIGHT*2);
             
             imgAvatar.setImageDrawable(avatar);
 
@@ -172,6 +148,8 @@ public class ContactPresenceActivity extends ThemeableActivity {
             } else {
                 txtCustomStatus.setVisibility(View.GONE);
             }
+            
+            updateOtrStatus();
         }
         c.close();
         
@@ -179,7 +157,40 @@ public class ContactPresenceActivity extends ThemeableActivity {
         updateUI();
     }
 
-    
+    private void updateOtrStatus ()
+    {
+
+        IImConnection conn = ((ImApp)getApplication()).getConnection(providerId);
+        
+        
+        
+        try {
+            
+            IOtrKeyManager keyManager = conn.getChatSessionManager().getChatSession(remoteAddress).getOtrKeyManager();
+
+                remoteFingerprint = keyManager.getRemoteFingerprint();
+
+                if (remoteFingerprint != null) {
+                    remoteFingerprint = remoteFingerprint.toUpperCase(Locale.ENGLISH);
+
+                   remoteFingerprintVerified = keyManager.isKeyVerified(remoteAddress);
+                            
+                    
+                }
+                
+               localFingerprint = keyManager.getLocalFingerprint();
+                
+                if (localFingerprint != null)
+                    localFingerprint = localFingerprint.toUpperCase(Locale.ENGLISH);
+
+            
+            
+        } catch (Exception e) {
+           Log.e(TAG,"error reading key data",e);
+        }
+        
+        
+    }
     
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
@@ -194,14 +205,19 @@ public class ContactPresenceActivity extends ThemeableActivity {
         TextView txtFingerprintRemote = (TextView) findViewById(R.id.txtFingerprintRemote);
         TextView txtFingerprintLocal = (TextView) findViewById(R.id.txtFingerprintLocal);
 
+        updateOtrStatus ();
+        
         if (remoteFingerprint != null) {
+            
+            
             txtFingerprintRemote.setText(remoteFingerprint);
+            
 
             if (remoteFingerprintVerified) {
                 lblFingerprintRemote.setText(R.string.their_fingerprint_verified_);
-                txtFingerprintRemote.setBackgroundColor(Color.GREEN);
+                txtFingerprintRemote.setBackgroundColor(getResources().getColor(R.color.otr_green));
             } else
-                txtFingerprintRemote.setBackgroundColor(Color.YELLOW);
+                txtFingerprintRemote.setBackgroundColor(getResources().getColor(R.color.otr_yellow));
 
             txtFingerprintRemote.setTextColor(Color.BLACK);
 
@@ -248,25 +264,20 @@ public class ContactPresenceActivity extends ThemeableActivity {
     }
 
     private void verifyRemoteFingerprint() {
-        Toast.makeText(this, R.string.the_remote_key_fingerprint_has_been_verified_, Toast.LENGTH_SHORT)
-                .show();
 
-        IOtrKeyManager okm;
         try {
-            IChatSession session = mApp.getChatSession(providerId, remoteAddress);
+
+            IImConnection conn = ((ImApp)getApplication()).getConnection(providerId);
+
+            IOtrKeyManager keyManager = conn.getChatSessionManager().getChatSession(remoteAddress).getOtrKeyManager();
+
+            keyManager.verifyKey(remoteAddress);
+
+            updateUI();
             
-            if (session != null)
-            {
-                okm = session.getOtrKeyManager();
-                okm.verifyKey(remoteAddress);
-                remoteFingerprintVerified = true;
-                updateUI();
-            }
         } catch (RemoteException e) {
             Log.e(TAG, "error verifying remote fingerprint", e);
         }
-
-        updateUI();
 
     }
 

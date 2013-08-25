@@ -41,13 +41,16 @@ public class OtrChatListener implements MessageListener {
 
         try {
             body = mOtrChatManager.decryptMessage(to, from, body, tlvs);
-        } catch (OtrException e) {
-            OtrDebugLogger.log("error decrypting message", e);
-            return false;
-        }
 
-        if (body != null) {
-            msg.setBody(body);
+            if (body != null) {
+                msg.setBody(body);                 
+                mMessageListener.onIncomingMessage(session, msg);
+            }
+        
+        } catch (OtrException e) {
+            
+            OtrDebugLogger.log("error decrypting message");                
+            msg.setBody("error decryption message body");
             mMessageListener.onIncomingMessage(session, msg);
         }
         
