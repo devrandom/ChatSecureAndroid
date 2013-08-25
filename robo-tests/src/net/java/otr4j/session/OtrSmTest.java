@@ -133,8 +133,6 @@ public class OtrSmTest extends EasyMockSupport {
 
         runMiddleOfProtocol(tlvs);
 
-        assertTrue(manager_b.isVerified(sessionId_b));
-
         assertTrue(manager_a.isVerified(sessionId_a));
     }
 

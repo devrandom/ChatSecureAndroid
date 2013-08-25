@@ -65,7 +65,7 @@ public class AccountActivityTest {
     @Test
     public void testPreconditions() {
         // Check that the title was set correctly
-        ImApp app = ImApp.getApplication(mActivity);
+        ImApp app = TestUtils.app;
         assertEquals(mActivity.getString(R.string.add_account, app.getProvider(1).mFullName),
                 mActivity.getTitle());
         mView = mActivity.findViewById(R.id.acct_act_scrollview);

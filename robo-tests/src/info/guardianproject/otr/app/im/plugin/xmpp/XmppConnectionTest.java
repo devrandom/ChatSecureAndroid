@@ -27,7 +27,6 @@ import info.guardianproject.otr.app.im.engine.Contact;
 import info.guardianproject.otr.app.im.engine.ContactList;
 import info.guardianproject.otr.app.im.engine.ContactListListener;
 import info.guardianproject.otr.app.im.engine.SubscriptionRequestListener;
-import info.guardianproject.otr.app.im.plugin.XmppAddress;
 import info.guardianproject.otr.app.im.plugin.xmpp.XmppConnection;
 import info.guardianproject.otr.app.im.plugin.xmpp.XmppConnection.MyXMPPConnection;
 import info.guardianproject.otr.app.im.plugin.xmpp.XmppConnection.XmppContactList;
@@ -98,7 +97,7 @@ public class XmppConnectionTest extends EasyMockSupport {
         expectLastCall();
         replayAll();
         contactListManager.listenToRoster(roster);
-        contactListManager.loadContactLists();
+        contactListManager.do_loadContactLists();
         contactListManager.approveSubscriptionRequest(TEST_CONTACT);
         // Second time should not call notifyContactListUpdated, since contact
         // already exists
@@ -135,7 +134,7 @@ public class XmppConnectionTest extends EasyMockSupport {
         expectLastCall();
         replayAll();
         contactListManager.listenToRoster(roster);
-        contactListManager.loadContactLists();
+        contactListManager.do_loadContactLists();
         contactListManager.approveSubscriptionRequest(TEST_CONTACT);
         assertEquals(1, contactListManager.getContactLists().size());
         assertNotNull(contactListManager.getContactList(DEFAULT_GROUP_NAME));

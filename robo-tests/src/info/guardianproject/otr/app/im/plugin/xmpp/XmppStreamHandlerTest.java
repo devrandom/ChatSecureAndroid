@@ -76,7 +76,27 @@ public class XmppStreamHandlerTest extends EasyMockSupport {
         expect(connection.getRoster()).andStubReturn(roster);
         
         replay(connection, roster);
-        handler = new XmppStreamHandler(connection);
+        handler = new XmppStreamHandler(connection, new ConnectionListener() {
+
+            @Override
+            public void connectionClosed() {
+            }
+
+            @Override
+            public void connectionClosedOnError(Exception e) {
+            }
+
+            @Override
+            public void reconnectingIn(int seconds) {
+            }
+
+            @Override
+            public void reconnectionSuccessful() {
+            }
+
+            @Override
+            public void reconnectionFailed(Exception e) {
+            }});
         // Set max queue size to 10 and acks at 10/2 = 5
         handler.setMaxOutgoingQueueSize(10);
         listener = listenerCapture.getValue();
