@@ -35,7 +35,7 @@ import com.google.common.collect.Sets;
  * @author liorsaar
  */
 public abstract class DataplugService extends Service {
-	private static final int MAX_CHUNK_LENGTH = 32768;
+	public static final int MAX_CHUNK_LENGTH = 32768;
 	private  static final int MAX_OUTSTANDING = 5;
     private static final int MAX_TRANSFER_LENGTH = 1024*1024*64;
 	
@@ -151,8 +151,11 @@ public abstract class DataplugService extends Service {
 		}
 		
 		public int getStart() {
-			// TODO Auto-generated method stub
-			return 0;
+			return mStart;
+		}
+		
+		public int getEnd() {
+			return mEnd;
 		}
 
 		public Request( String aId, String aAccountId, String aFriendId, String aUri, RequestCallback aCallback) {

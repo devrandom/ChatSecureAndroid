@@ -51,16 +51,20 @@ public class SecureGalleryService extends DataplugService {
 			// repond with : accountid, friendid, requestid, image binary
 			String contentUriEncoded = aUri.substring( URI_IMAGE.length() ) ;
 			String contentUri = URLDecoder.decode(contentUriEncoded, CHARSET);
-			doRequestToLocal_URI_IMAGE( aRequest.getId(), contentUri );
+			doRequestToLocal_URI_IMAGE( aRequest.getId(), contentUri, aRequest.getStart(), aRequest.getEnd() );
 			return ;
 		}
 		// unknown
 		MainActivity.error( this, "doRequestToLocal: Unknown URI: "+ aUri ) ;
 	}
 	
-	private void doRequestToLocal_URI_IMAGE(String aRequestId, String contentUri) throws IOException {
-		MainActivity.console( "doRequestGalleryImage:" + contentUri ) ;
-		byte[] buffer = Utils.MediaStoreHelper.getImageContent(this, contentUri);
+	private void doRequestToLocal_URI_IMAGE(String aRequestId, String contentUri, int aStart, int aEnd) throws IOException {
+		MainActivity.console( "doRequestGalleryImage:" + contentUri + " @" + aStart ) ;
+		if (aEnd - aStart > DataplugService.MAX_CHUNK_LENGTH) {
+			MainActivity.error( this, "doRequestToLocal: request range too large" ) ;
+			return;
+		}
+		byte[] buffer = Utils.MediaStoreHelper.getImageContent(this, contentUri, aStart, aEnd);
 		sendResponseFromLocal( aRequestId, buffer );
 	}
 

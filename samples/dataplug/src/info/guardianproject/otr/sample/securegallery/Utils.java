@@ -42,16 +42,23 @@ public class Utils {
 			return file.length();
 		}
 
-		public static byte[] getImageContent(Context aContext, String contentUri)
+		public static byte[] getImageContent(Context aContext, String contentUri, int aStart, int aEnd)
 				throws FileNotFoundException, IOException {
 			// reading the binary file
 			Uri uri = Uri.parse(contentUri);
 			String path = Utils.MediaStoreHelper.getPath(aContext, uri);
 			
 			File file = new File(path);
+			int length = (int)file.length() ;
+			if (aStart > length || aEnd < aStart) {
+				return new byte[0];
+			}
+
 			FileInputStream fis = new FileInputStream(file);
-			long length = file.length() ;
-			byte[] buffer = new byte[ (int) length ];
+			fis.skip(aStart);
+			if (aEnd >= length)
+				aEnd = length - 1;
+			byte[] buffer = new byte[ aEnd - aStart + 1 ];
 					
 			fis.read(buffer);
 			fis.close();
