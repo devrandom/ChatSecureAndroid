@@ -589,7 +589,7 @@ public class OtrDataHandler implements DataHandler {
     private void naiveHeadersParse(String headersString, Map<String, String> headers) {
         for (String line: headersString.split("\n")) {
             try {
-                String[] nameValue = line.split("=", 2);
+                String[] nameValue = line.split(":", 2);
                 headers.put(nameValue[0], nameValue[1]);
             } catch (ArrayIndexOutOfBoundsException e) {
                 // ignore
