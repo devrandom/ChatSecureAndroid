@@ -19,13 +19,11 @@ package net.java.otr4j.session;
 import static org.junit.Assert.*;
 
 import java.util.List;
-import java.util.Properties;
 
 import javax.crypto.interfaces.DHPublicKey;
 
 import net.java.otr4j.OtrException;
 import net.java.otr4j.OtrKeyManagerImpl;
-import net.java.otr4j.OtrKeyManagerStore;
 import net.java.otr4j.crypto.SM;
 import net.java.otr4j.crypto.SM.SMException;
 import net.java.otr4j.session.OtrSm;
@@ -35,47 +33,10 @@ import net.java.otr4j.session.TLV;
 
 import org.easymock.EasyMock;
 import org.easymock.EasyMockSupport;
-import org.jivesoftware.smack.util.Base64;
 import org.junit.Before;
 import org.junit.Test;
 
 public class OtrSmTest extends EasyMockSupport {
-    class MemoryPropertiesStore implements OtrKeyManagerStore {
-        private Properties properties = new Properties();
-
-        public MemoryPropertiesStore() {
-        }
-
-        public void setProperty(String id, boolean value) {
-            properties.setProperty(id, "true");
-        }
-
-        public void setProperty(String id, byte[] value) {
-            properties.setProperty(id, new String(Base64.encodeBytes(value)));
-        }
-
-        public void removeProperty(String id) {
-            properties.remove(id);
-
-        }
-
-        public byte[] getPropertyBytes(String id) {
-            String value = properties.getProperty(id);
-
-            if (value != null)
-                return Base64.decode(value);
-            return null;
-        }
-
-        public boolean getPropertyBoolean(String id, boolean defaultValue) {
-            try {
-                return Boolean.valueOf(properties.get(id).toString());
-            } catch (Exception e) {
-                return defaultValue;
-            }
-        }
-    }
-
     OtrSm sm_a;
     OtrSm sm_b;
     private OtrKeyManagerImpl manager_a;
