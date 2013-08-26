@@ -32,7 +32,7 @@ public class MainActivity extends Activity {
 	public static final String TAG = "SecureGallery" ;
 
 	private static TextView sConsole;
-	private static StringBuffer sBuffer ;
+	private static StringBuffer sBuffer = new StringBuffer();
 	
 	private static Handler sHandler = new Handler(Looper.getMainLooper());	
 	private static ImageView sConsoleImageView ;
@@ -70,8 +70,6 @@ public class MainActivity extends Activity {
 		sConsole = (TextView)findViewById(R.id.consoleTextView);
 		sConsoleImageView = (ImageView)findViewById(R.id.consoleImageView );
 		
-		sBuffer=new StringBuffer() ;
-		sHandler = new Handler(Looper.getMainLooper());	
 		console( "Ready" ) ;
 	}
 	
@@ -79,15 +77,15 @@ public class MainActivity extends Activity {
 	 * UI output
 	 */
 	public static void console( final String aMessage ) {
-		if (aMessage == null)
-			throw new NullPointerException();
 		Log.w(TAG, aMessage ) ;
 		sHandler.post(new Runnable() {
 			@Override
 			public void run() {
 				sBuffer.append( aMessage + "\n" );
-				sConsole.setText( sBuffer.toString() );
-				sConsole.invalidate() ;
+				if (sConsole != null) {
+					sConsole.setText( sBuffer.toString() );
+					sConsole.invalidate() ;
+				}
 			}
 		}) ;
 	}
