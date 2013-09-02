@@ -4,6 +4,7 @@ import info.guardianproject.otr.app.im.IChatSession;
 import info.guardianproject.otr.app.im.IChatSessionManager;
 import info.guardianproject.otr.app.im.IImConnection;
 import info.guardianproject.otr.app.im.ImService;
+import info.guardianproject.otr.dataplug.Api;
 import android.content.Context;
 import android.content.Intent;
 import android.os.RemoteException;

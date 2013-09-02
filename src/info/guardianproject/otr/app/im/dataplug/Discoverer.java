@@ -1,6 +1,7 @@
 package info.guardianproject.otr.app.im.dataplug;
 
 import info.guardianproject.bouncycastle.util.encoders.Hex;
+import info.guardianproject.otr.dataplug.Api;
 
 import java.io.UnsupportedEncodingException;
 import java.security.SecureRandom;
@@ -51,7 +52,7 @@ public class Discoverer {
 
     /** Initiate discovery of local DataPlugs */
     public void discoverDataPlugs() {
-        Intent intent = new Intent(Api.DISCOVER_ACTION);
+        Intent intent = new Intent(Api.ACTION_DISCOVER);
 
         PackageManager pm = mContext.getPackageManager();
         List<ResolveInfo> list = pm.queryIntentServices(intent, 0);
@@ -62,7 +63,7 @@ public class Discoverer {
             Log.i(Api.DATAPLUG_TAG, component.getClassName());
             String token = makeToken();
             tokens.put(token, component);
-            Intent discoverIntent = new Intent(Api.DISCOVER_ACTION);
+            Intent discoverIntent = new Intent(Api.ACTION_DISCOVER);
             discoverIntent.setComponent(component);
             discoverIntent.putExtra(Api.EXTRA_TOKEN, token);
             mContext.startService(discoverIntent);
@@ -76,7 +77,7 @@ public class Discoverer {
             return;
         }
 
-        Intent activateIntent = new Intent(Api.ACTIVATE_ACTION);
+        Intent activateIntent = new Intent(Api.ACTION_ACTIVATE);
         activateIntent.setComponent(registration.getComponent());
         activateIntent.putExtra(Api.EXTRA_ACCOUNT_ID, accountId);
         activateIntent.putExtra(Api.EXTRA_FRIEND_ID, friendId);

@@ -1,9 +1,9 @@
-package info.guardianproject.otr.app.im.dataplug;
+package info.guardianproject.otr.dataplug;
 
 public class Api {
-    public static final String DISCOVER_ACTION = "info.guardianproject.otr.app.im.dataplug.DISCOVER";
-    public static final String REGISTER_ACTION = "info.guardianproject.otr.app.im.dataplug.REGISTER";
-    public static final String ACTIVATE_ACTION = "info.guardianproject.otr.app.im.dataplug.ACTIVATE";
+    public static final String ACTION_DISCOVER = "info.guardianproject.otr.app.im.dataplug.DISCOVER";
+    public static final String ACTION_REGISTER = "info.guardianproject.otr.app.im.dataplug.REGISTER";
+    public static final String ACTION_ACTIVATE = "info.guardianproject.otr.app.im.dataplug.ACTIVATE";
     /** Request from plugin to remote*/
     public static final String ACTION_OUTGOING_REQUEST = "info.guardianproject.otr.app.im.dataplug.OUTGOING_REQUEST";
     /** Response from remote to plugin */
@@ -19,8 +19,10 @@ public class Api {
     public static final String EXTRA_ACCOUNT_ID = "AccountId";
     public static final String EXTRA_REQUEST_ID = "RequestId";
     public static final String EXTRA_CONTENT = "Content";
-    public static final String REGISTRATION_TOKEN = "Registration";
+    public static final String EXTRA_REGISTRATION = "Registration";
     public static final String EXTRA_METHOD = "Method";
     public static final String EXTRA_HEADERS = "Headers";
     public static final String EXTRA_URI = "Uri";
+    
+    public static final String MIME_TYPE = "application/json";
 }

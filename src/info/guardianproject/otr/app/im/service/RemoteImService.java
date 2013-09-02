@@ -31,7 +31,6 @@ import info.guardianproject.otr.app.im.app.ImPluginHelper;
 import info.guardianproject.otr.app.im.app.NetworkConnectivityListener;
 import info.guardianproject.otr.app.im.app.NetworkConnectivityListener.State;
 import info.guardianproject.otr.app.im.app.NewChatActivity;
-import info.guardianproject.otr.app.im.dataplug.Api;
 import info.guardianproject.otr.app.im.dataplug.DataPlugger;
 import info.guardianproject.otr.app.im.dataplug.Discoverer;
 import info.guardianproject.otr.app.im.dataplug.PluggerRequest;
@@ -42,6 +41,7 @@ import info.guardianproject.otr.app.im.engine.ImConnection;
 import info.guardianproject.otr.app.im.engine.ImException;
 import info.guardianproject.otr.app.im.plugin.ImPluginInfo;
 import info.guardianproject.otr.app.im.provider.Imps;
+import info.guardianproject.otr.dataplug.Api;
 import info.guardianproject.util.Debug;
 import info.guardianproject.util.LogCleaner;
 
@@ -269,9 +269,9 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
             mDataPlugger = new DataPlugger(this, (ImApp)getApplication());
         }
         if (intent.getAction() != null) {
-            if (intent.getAction().equals(Api.REGISTER_ACTION)) {
+            if (intent.getAction().equals(Api.ACTION_REGISTER)) {
                 String token = intent.getExtras().getString(Api.EXTRA_TOKEN);
-                String meta = intent.getExtras().getString(Api.REGISTRATION_TOKEN);
+                String meta = intent.getExtras().getString(Api.EXTRA_REGISTRATION);
                 Discoverer.getInstance(this).register(token, meta);
 
                 // FIXME is this the right value?

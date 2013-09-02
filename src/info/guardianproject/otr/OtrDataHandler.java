@@ -1,11 +1,11 @@
 package info.guardianproject.otr;
 
-import info.guardianproject.otr.app.im.dataplug.Api;
 import info.guardianproject.otr.app.im.engine.Address;
 import info.guardianproject.otr.app.im.engine.ChatSession;
 import info.guardianproject.otr.app.im.engine.DataHandler;
 import info.guardianproject.otr.app.im.engine.DataListener;
 import info.guardianproject.otr.app.im.engine.Message;
+import info.guardianproject.otr.dataplug.Api;
 import info.guardianproject.util.Debug;
 import info.guardianproject.util.SystemServices;
 

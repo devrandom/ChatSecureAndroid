@@ -25,7 +25,6 @@ import info.guardianproject.otr.OtrChatSessionAdapter;
 import info.guardianproject.otr.OtrDataHandler;
 import info.guardianproject.otr.OtrKeyManagerAdapter;
 import info.guardianproject.otr.app.im.IChatListener;
-import info.guardianproject.otr.app.im.dataplug.Api;
 import info.guardianproject.otr.app.im.dataplug.Descriptor;
 import info.guardianproject.otr.app.im.dataplug.Discoverer;
 import info.guardianproject.otr.app.im.dataplug.PluggerRequest;
@@ -46,6 +45,7 @@ import info.guardianproject.otr.app.im.engine.Message;
 import info.guardianproject.otr.app.im.engine.MessageListener;
 import info.guardianproject.otr.app.im.engine.Presence;
 import info.guardianproject.otr.app.im.provider.Imps;
+import info.guardianproject.otr.dataplug.Api;
 import info.guardianproject.util.Debug;
 import info.guardianproject.util.SystemServices;
 

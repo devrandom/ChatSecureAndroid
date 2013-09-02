@@ -1,5 +1,7 @@
 package info.guardianproject.otr.sample.securegallery;
 
+import info.guardianproject.otr.dataplug.Api;
+
 import java.io.ByteArrayInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -29,7 +31,7 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity {
 	
-	public static final String TAG = "SecureGallery" ;
+    public static final String TAG = "SecureGallery" ;
 
 	private static TextView sConsole;
 	private static StringBuffer sBuffer = new StringBuffer();
@@ -57,12 +59,12 @@ public class MainActivity extends Activity {
 
 	private void handleIntent(Intent intent) throws Exception {
 		String action = intent.getAction();
-		if (action.equals( "info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY") ) {
+		if (action.equals( SecureGalleryApi.ACTION_REQUEST_GALLERY) ) {
 			mRequestId = intent.getExtras().getString(Api.EXTRA_REQUEST_ID);
 			doRequestGallery();
 		}
-		if (action.equals( "info.guardianproject.otr.app.im.dataplug.SHOW_IMAGE") ) {
-		    String path = intent.getStringExtra(Api.EXTRA_PATH);
+		if (action.equals( SecureGalleryApi.ACTION_SHOW_IMAGE) ) {
+		    String path = intent.getStringExtra(SecureGalleryApi.EXTRA_PATH);
 		    if( path == null ) {
 		        doResponseGalleryImage(sContent);
 		        return ; 
@@ -201,7 +203,7 @@ public class MainActivity extends Activity {
     public static void startActivity_REQUEST_GALLERY( String aRequestId, Context aContext ) {
 		// repond with : accountid, friendid, requestid, body(json)
 		Intent intent = new Intent(aContext, MainActivity.class);
-		intent.setAction("info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY");
+		intent.setAction(SecureGalleryApi.ACTION_REQUEST_GALLERY);
 		intent.setFlags( Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK );
 		intent.putExtra(Api.EXTRA_REQUEST_ID, aRequestId);
 		aContext.startActivity(intent);
@@ -209,7 +211,7 @@ public class MainActivity extends Activity {
 	
 	public static void startActivity_SHOW_IMAGE(Context aContext, byte[] aContent) {
 		Intent intent = new Intent(aContext, MainActivity.class);
-		intent.setAction("info.guardianproject.otr.app.im.dataplug.SHOW_IMAGE");
+		intent.setAction(SecureGalleryApi.ACTION_SHOW_IMAGE);
 		intent.setFlags( Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED );
 		sContent = aContent;
 		aContext.startActivity(intent);
@@ -217,8 +219,8 @@ public class MainActivity extends Activity {
 
     public static void startActivity_SHOW_IMAGE(SecureGalleryService aContext, String aAbsolutePath) {
         Intent intent = new Intent(aContext, MainActivity.class);
-        intent.setAction("info.guardianproject.otr.app.im.dataplug.SHOW_IMAGE");
-        intent.putExtra(Api.EXTRA_PATH, aAbsolutePath);
+        intent.setAction(SecureGalleryApi.ACTION_SHOW_IMAGE);
+        intent.putExtra(SecureGalleryApi.EXTRA_PATH, aAbsolutePath);
         intent.setFlags( Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED );
         aContext.startActivity(intent);
     }
