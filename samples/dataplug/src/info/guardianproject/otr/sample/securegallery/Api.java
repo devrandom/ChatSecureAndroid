@@ -47,11 +47,10 @@ public class Api {
 	public static final String ACTION_DISCOVER = "info.guardianproject.otr.app.im.dataplug.DISCOVER";
 	public static final String ACTION_REGISTER = "info.guardianproject.otr.app.im.dataplug.REGISTER";
 	public static final String ACTION_ACTIVATE = "info.guardianproject.otr.app.im.dataplug.ACTIVATE";
-	public static final String ACTION_REQUEST = "info.guardianproject.otr.app.im.dataplug.REQUEST";
-	public static final String ACTION_RESPONSE = "info.guardianproject.otr.app.im.dataplug.RESPONSE";
-	public static final String ACTION_REQUEST_TO_LOCAL = "info.guardianproject.otr.app.im.dataplug.REQUEST_TO_LOCAL";
-	public static final String ACTION_RESPONSE_FROM_LOCAL = "info.guardianproject.otr.app.im.dataplug.RESPONSE_FROM_LOCAL";
-	
+	public static final String ACTION_OUTGOING_REQUEST = "info.guardianproject.otr.app.im.dataplug.OUTGOING_REQUEST";
+	public static final String ACTION_INCOMING_RESPONSE = "info.guardianproject.otr.app.im.dataplug.INCOMING_RESPONSE";
+	public static final String ACTION_INCOMING_REQUEST = "info.guardianproject.otr.app.im.dataplug.INCOMING_REQUEST";
+	public static final String ACTION_OUTGOING_RESPONSE = "info.guardianproject.otr.app.im.dataplug.OUTGOING_RESPONSE";
 
 	public static final String MIME_TYPE = "application/json";
 

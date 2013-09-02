@@ -39,11 +39,7 @@ public class SecureGalleryService extends DataplugService {
 	static final String URI_GALLERY = "chatsecure:/gallery/";
 	static final String URI_IMAGE = URI_GALLERY + "image/";
 
-	/*
-	 * Alice - initiator - the side that hit the ui first
-	 * Bob - received - in doRequestToLocal - responds with json
-	 */
-	protected void doRequestToLocal( Request aRequest ) throws Exception {
+	protected void handleIncomingRequest( Request aRequest ) throws Exception {
 		// look at EXTRA_URI - /gallery/activate
 		String aUri = aRequest.getUri();
 		if( aUri.equals( URI_GALLERY )) {
@@ -54,14 +50,14 @@ public class SecureGalleryService extends DataplugService {
 			// respond with : accountid, friendid, requestid, image binary
 			String contentUriEncoded = aUri.substring( URI_IMAGE.length() ) ;
 			String contentUri = URLDecoder.decode(contentUriEncoded, CHARSET);
-			doRequestToLocal_URI_IMAGE( aRequest.getId(), contentUri, aRequest.getStart(), aRequest.getEnd() );
+			handleIncomingRequest_URI_IMAGE( aRequest.getId(), contentUri, aRequest.getStart(), aRequest.getEnd() );
 			return ;
 		}
 		// unknown
-		MainActivity.error( this, "doRequestToLocal: Unknown URI: "+ aUri ) ;
+		MainActivity.error( this, "handleIncomingRequest: Unknown URI: "+ aUri ) ;
 	}
 	
-	private void doRequestToLocal_URI_IMAGE(String aRequestId, String contentUri, int aStart, int aEnd) throws IOException {
+	private void handleIncomingRequest_URI_IMAGE(String aRequestId, String contentUri, int aStart, int aEnd) throws IOException {
 		MainActivity.console( "doRequestGalleryImage:" + contentUri + " @" + aStart ) ;
 		if (aEnd - aStart > DataplugService.MAX_CHUNK_LENGTH) {
 			MainActivity.error( this, "doRequestToLocal: request range too large" ) ;
@@ -74,10 +70,10 @@ public class SecureGalleryService extends DataplugService {
 	        MainActivity.console(headers);
 		}
 
-		sendResponseFromLocal(aRequestId, buffer,  headers);
+		sendOutgoingResponse(aRequestId, buffer,  headers);
 	}
 
-	protected void doResponseGallery( final Request aRequest, byte[] aContentByteArray) throws UnsupportedEncodingException, JSONException {
+	protected void handleIncomingResponseGallery( final Request aRequest, byte[] aContentByteArray) throws UnsupportedEncodingException, JSONException {
 		String content = new String(aContentByteArray, CHARSET);
 		MainActivity.console( "doResponseGallery: content=" + content );
 		JSONObject jsonObject = new JSONObject( content );
@@ -137,11 +133,11 @@ public class SecureGalleryService extends DataplugService {
 	}
 	
 	protected void doActivate(String aAccountId, String aFriendId) {
-		sendRequest( aAccountId, aFriendId, URI_GALLERY, new RequestCallback() {
+		sendOutgoingRequest( aAccountId, aFriendId, URI_GALLERY, new RequestCallback() {
 			@Override
 			public void onResponse(Request aRequest, byte[] aContent, String headersString) {
 				try {
-					doResponseGallery( aRequest, aContent ) ;
+					handleIncomingResponseGallery( aRequest, aContent ) ;
 				} catch (Exception e) {
 					throw new RuntimeException(e);
 				}
@@ -149,9 +145,9 @@ public class SecureGalleryService extends DataplugService {
 		}) ;
 	}
 
-	public static void startService_RESPONSE_FROM_LOCAL(Context aContext, String aRequestId, byte[] aContent ) {
+	public static void startService_OUTGOING_RESPONSE(Context aContext, String aRequestId, byte[] aContent ) {
 		Intent intent = new Intent(aContext, SecureGalleryService.class);
-		intent.setAction(Api.ACTION_RESPONSE_FROM_LOCAL);
+		intent.setAction(Api.ACTION_OUTGOING_RESPONSE);
 		intent.putExtra(Api.EXTRA_CONTENT, aContent );
 		intent.putExtra(Api.EXTRA_REQUEST_ID, aRequestId);
 		aContext.startService(intent);

@@ -111,7 +111,7 @@ public abstract class DataplugService extends Service {
                 }
                 String rangeHeader = "Range: bytes=" + current + "-" + end;
 
-                Request request = sendRequest(mAccountId, mFriendId, mUri, rangeHeader, new RequestCallback() {
+                Request request = sendOutgoingRequest(mAccountId, mFriendId, mUri, rangeHeader, new RequestCallback() {
                 	@Override
                 	public void onResponse(Request aRequest, byte[] aContent, String headersString) {
                 		if (mStream == null)
@@ -295,7 +295,7 @@ public abstract class DataplugService extends Service {
 		return START_NOT_STICKY;
 	}
 
-	protected void doDiscover(Intent aIntent) throws JSONException {
+	protected void handleDiscover(Intent aIntent) throws JSONException {
 		String token = aIntent.getStringExtra( Api.EXTRA_TOKEN );
 		info( "doDiscover: " + token );
 		if( token == null ) {
@@ -319,7 +319,7 @@ public abstract class DataplugService extends Service {
 
 	abstract protected String getRegistration() throws JSONException;
 
-	private void doActivate(Intent aIntent) {
+	private void handleActivate(Intent aIntent) {
 		String zFriendId = aIntent.getStringExtra(Api.EXTRA_FRIEND_ID);
 		String zAccountId = aIntent.getStringExtra(Api.EXTRA_ACCOUNT_ID);
 		info( "doActivate: Friend:" + zFriendId ) ;
@@ -334,17 +334,17 @@ public abstract class DataplugService extends Service {
         transfer.perform();
 	}
 	
-	protected Request sendRequest(String aAccountId, String aFriendId, String aUri, RequestCallback aCallback) {
-		return sendRequest(aAccountId, aFriendId, aUri, "", aCallback);
+	protected Request sendOutgoingRequest(String aAccountId, String aFriendId, String aUri, RequestCallback aCallback) {
+		return sendOutgoingRequest(aAccountId, aFriendId, aUri, "", aCallback);
 	}
 	
-	protected Request sendRequest(String aAccountId, String aFriendId, String aUri, String headers, RequestCallback aCallback) {
+	protected Request sendOutgoingRequest(String aAccountId, String aFriendId, String aUri, String headers, RequestCallback aCallback) {
 		Request request = new Request( aAccountId, aFriendId, aUri, aCallback );
 		mOutgoingCache.put(request) ;
 	
-		info( "sendRequest: EXTRA_URI:" + aUri ) ;
+		info( "sendOutgoingRequest: EXTRA_URI:" + aUri ) ;
 		Intent zIntent = new Intent();
-		zIntent.setAction(Api.ACTION_REQUEST) ;
+		zIntent.setAction(Api.ACTION_OUTGOING_REQUEST) ;
 		zIntent.putExtra( Api.EXTRA_METHOD , "GET" ) ;
 		zIntent.putExtra( Api.EXTRA_URI, aUri ) ;
 		zIntent.putExtra( Api.EXTRA_HEADERS, headers) ;
@@ -355,7 +355,7 @@ public abstract class DataplugService extends Service {
 		return request;
 	}
 
-	protected void doResponse(Intent aIntent) throws Exception {
+	protected void handleIncomingResponse(Intent aIntent) throws Exception {
 		String zFriendId = aIntent.getStringExtra(Api.EXTRA_FRIEND_ID);
 		info( "doResponse: EXTRA_FRIEND_ID:" + zFriendId );
 		String zRequestId = aIntent.getStringExtra(Api.EXTRA_REQUEST_ID);
@@ -373,15 +373,15 @@ public abstract class DataplugService extends Service {
 		zRequest.getCallback().onResponse(zRequest, zContent, headers);
 	}
 
-	protected void sendResponseFromLocal(String aRequestId, byte[] aContent) {
-		this.sendResponseFromLocal(aRequestId, aContent, null);
+	protected void sendOutgoingResponse(String aRequestId, byte[] aContent) {
+		this.sendOutgoingResponse(aRequestId, aContent, null);
 	}
 	
-	protected void sendResponseFromLocal(String aRequestId, byte[] aContent, String aHeaders) {
+	protected void sendOutgoingResponse(String aRequestId, byte[] aContent, String aHeaders) {
 		// respond with : accountid, friendid, requiestid, body(json)
-		info( "sendResponseFromLocal: content len " + aContent.length ) ;
+		info( "sendOutgoingResponse: content len " + aContent.length ) ;
 		Intent zIntent = new Intent();
-		zIntent.setAction(Api.ACTION_RESPONSE_FROM_LOCAL) ;
+		zIntent.setAction(Api.ACTION_OUTGOING_RESPONSE) ;
 		Request request = mIncomingCache.get(aRequestId);
 		zIntent.putExtra( Api.EXTRA_ACCOUNT_ID , request.getAccountId() ) ;
 		zIntent.putExtra( Api.EXTRA_FRIEND_ID , request.getFriendId() ) ;
@@ -403,19 +403,19 @@ public abstract class DataplugService extends Service {
 			return ;
 		}
 		if( zAction.equals(Api.ACTION_DISCOVER ) ) {
-			doDiscover( aIntent ) ;
+			handleDiscover( aIntent ) ;
 			return ;
 		}
 		if( zAction.equals(Api.ACTION_ACTIVATE ) ) {
-			doActivate( aIntent ) ;
+			handleActivate( aIntent ) ;
 			return ;
 		}
-		if( zAction.equals(Api.ACTION_RESPONSE ) ) {
-			doResponse( aIntent ) ;
+		if( zAction.equals(Api.ACTION_INCOMING_RESPONSE ) ) {
+			handleIncomingResponse( aIntent ) ;
 			return ;
 		}
-		if( zAction.equals(Api.ACTION_REQUEST_TO_LOCAL ) ) {
-			Bundle extras = aIntent.getExtras();
+		if( zAction.equals(Api.ACTION_INCOMING_REQUEST ) ) {
+			Bundle extras = aIntent.getExtras(); // TODO fold
 			Request request = new Request(
 					extras.getString(Api.EXTRA_REQUEST_ID),
 					extras.getString(Api.EXTRA_ACCOUNT_ID),
@@ -427,25 +427,25 @@ public abstract class DataplugService extends Service {
 			mIncomingCache.put(request) ;
 			
 			if( request.getUri() == null ) {
-				error( "RequestToLocal: uri=null" ) ;
+				error( "IncomingRequest: uri=null" ) ;
 				return ; // TODO error
 			}
 			
-			doRequestToLocal( request ) ;
+			handleIncomingRequest( request ) ;
 			return ;
 		}
-		if( zAction.equals(Api.ACTION_RESPONSE_FROM_LOCAL ) ) {
-			doResponseFromLocal( aIntent ) ;
+		if( zAction.equals(Api.ACTION_OUTGOING_RESPONSE ) ) {
+			handleOutgoingResponse( aIntent ) ;
 			return ;
 		}
 		error( "Unknown action " + zAction ) ;
 	}
 	
-	protected void doResponseFromLocal(Intent aIntent) {
-		sendResponseFromLocal(aIntent.getStringExtra(Api.EXTRA_REQUEST_ID), aIntent.getByteArrayExtra(Api.EXTRA_CONTENT));
+	protected void handleOutgoingResponse(Intent aIntent) {
+		sendOutgoingResponse(aIntent.getStringExtra(Api.EXTRA_REQUEST_ID), aIntent.getByteArrayExtra(Api.EXTRA_CONTENT));
 	}
 
-	abstract protected void doRequestToLocal(Request aRequest) throws Exception ;
+	abstract protected void handleIncomingRequest(Request aRequest) throws Exception ;
 
 	private void error(String message) {
 		MainActivity.error( this, message ) ;

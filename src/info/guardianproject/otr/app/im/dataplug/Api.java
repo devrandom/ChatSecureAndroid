@@ -5,14 +5,13 @@ public class Api {
     public static final String REGISTER_ACTION = "info.guardianproject.otr.app.im.dataplug.REGISTER";
     public static final String ACTIVATE_ACTION = "info.guardianproject.otr.app.im.dataplug.ACTIVATE";
     /** Request from plugin to remote*/
-    public static final String REQUEST_ACTION = "info.guardianproject.otr.app.im.dataplug.REQUEST";
+    public static final String ACTION_OUTGOING_REQUEST = "info.guardianproject.otr.app.im.dataplug.OUTGOING_REQUEST";
     /** Response from remote to plugin */
-    public static final String RESPONSE_ACTION = "info.guardianproject.otr.app.im.dataplug.RESPONSE";
+    public static final String ACTION_INCOMING_RESPONSE = "info.guardianproject.otr.app.im.dataplug.INCOMING_RESPONSE";
     /** Request from remote to plugin */
-    public static final String REQUEST_TO_LOCAL_ACTION = "info.guardianproject.otr.app.im.dataplug.REQUEST_TO_LOCAL";
+    public static final String ACTION_INCOMING_REQUEST = "info.guardianproject.otr.app.im.dataplug.INCOMING_REQUEST";
     /** Response from plugin to remote */
-    public static final String RESPONSE_FROM_LOCAL_ACTION = "info.guardianproject.otr.app.im.dataplug.RESPONSE_FROM_LOCAL";
-
+    public static final String ACTION_OUTGOING_RESPONSE = "info.guardianproject.otr.app.im.dataplug.OUTGOING_RESPONSE";
 
     public static final String DATAPLUG_TAG = "GB.dataplug";
     public static final String EXTRA_TOKEN = "Token";

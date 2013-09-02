@@ -48,7 +48,7 @@ public class DataPlugger {
             Log.e(Api.DATAPLUG_TAG, "Could not find registration for this uri");
             return false;
         }
-        Intent responseIntent = new Intent(Api.RESPONSE_ACTION);
+        Intent responseIntent = new Intent(Api.ACTION_INCOMING_RESPONSE);
         responseIntent.setComponent(registration.getComponent());
         responseIntent.putExtra(Api.EXTRA_REQUEST_ID, response.getRequestId());
         responseIntent.putExtra(Api.EXTRA_FRIEND_ID, response.getFriendId());
@@ -83,7 +83,7 @@ public class DataPlugger {
             Log.e(Api.DATAPLUG_TAG, "Could not find registration for this uri");
             return false;
         }
-        Intent requestIntent = new Intent(Api.REQUEST_TO_LOCAL_ACTION);
+        Intent requestIntent = new Intent(Api.ACTION_INCOMING_REQUEST);
         requestIntent.setComponent(registration.getComponent());
         requestIntent.putExtra(Api.EXTRA_METHOD, request.getMethod());
         requestIntent.putExtra(Api.EXTRA_URI, request.getUri());

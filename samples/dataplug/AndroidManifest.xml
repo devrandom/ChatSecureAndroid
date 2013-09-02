@@ -42,13 +42,13 @@
                 <action android:name="info.guardianproject.otr.app.im.dataplug.ACTIVATE" />
             </intent-filter>
             <intent-filter>
-                <action android:name="info.guardianproject.otr.app.im.dataplug.RESPONSE" />
+                <action android:name="info.guardianproject.otr.app.im.dataplug.OUTGOING_RESPONSE" />
             </intent-filter>
             <intent-filter>
-                <action android:name="info.guardianproject.otr.app.im.dataplug.REQUEST_TO_LOCAL" />
+                <action android:name="info.guardianproject.otr.app.im.dataplug.INCOMING_REQUEST" />
             </intent-filter>
             <intent-filter>
-                <action android:name="info.guardianproject.otr.app.im.dataplug.RESPONE_FROM_LOCAL" />
+                <action android:name="info.guardianproject.otr.app.im.dataplug.INCOMING_RESPONSE" />
             </intent-filter>
         </service>
         

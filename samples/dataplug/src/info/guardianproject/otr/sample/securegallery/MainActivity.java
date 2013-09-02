@@ -133,7 +133,7 @@ public class MainActivity extends Activity {
 		Collection<String> uris = Lists.newArrayList();
 		uris.add(aUri.toString());
 		String content = getGalleryListing( uris ) ;
-		SecureGalleryService.startService_RESPONSE_FROM_LOCAL( this, mRequestId, content.getBytes() );
+		SecureGalleryService.startService_OUTGOING_RESPONSE( this, mRequestId, content.getBytes() );
 	}
 
 	@Override
