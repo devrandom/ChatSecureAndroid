@@ -39,8 +39,6 @@ public class SecureGalleryService extends DataplugService {
 	static final String URI_GALLERY = "chatsecure:/gallery/";
 	static final String URI_IMAGE = URI_GALLERY + "image/";
 
-	protected RandomAccessFile mStream;
-	
 	/*
 	 * Alice - initiator - the side that hit the ui first
 	 * Bob - received - in doRequestToLocal - responds with json
@@ -92,18 +90,25 @@ public class SecureGalleryService extends DataplugService {
 			String requestUri = URI_IMAGE + URLEncoder.encode(responseUri, CHARSET);
 
 			sendTransferRequest(aRequest.getAccountId(), aRequest.getFriendId(), requestUri, length, new TransferCallback() {
+			    
+			    protected RandomAccessFile mStream;
+			    protected File mFile ;
+			    
 				@Override
 				public void onResponse(Transfer aTransfer) {
-					byte[] content = new byte[aTransfer.getLength()];
-					try {
-						mStream.getChannel().position(0);
-						mStream.readFully(content);
-						mStream.close();
-					} catch (IOException e) {
-						throw new RuntimeException(e);
-					}
-					mStream = null;
-					MainActivity.startActivity_SHOW_IMAGE(SecureGalleryService.this, content);
+				    if( false ) {
+        					byte[] content = new byte[aTransfer.getLength()];
+        					try {
+        						mStream.getChannel().position(0);
+        						mStream.readFully(content);
+        						mStream.close();
+        					} catch (IOException e) {
+        						throw new RuntimeException(e);
+        					}
+        					mStream = null;
+        					MainActivity.startActivity_SHOW_IMAGE(SecureGalleryService.this, content);
+				    }
+                    MainActivity.startActivity_SHOW_IMAGE(SecureGalleryService.this, mFile.getAbsolutePath() );
 				}
 
 				@Override
@@ -113,12 +118,13 @@ public class SecureGalleryService extends DataplugService {
 		            File sdCard = Environment.getExternalStorageDirectory();
 		            File dir = new File (sdCard.getAbsolutePath() + "/SecureGallery/peerdata/" + aRequest.getAccountId() + "-" + aRequest.getFriendId());
 		            dir.mkdirs();
-		            File file = new File(dir, sanitizedPath);
+		            mFile = new File(dir, sanitizedPath);
+		            
 					try {
 						if (mStream != null) {
 							mStream.close();
 						}
-						mStream = new RandomAccessFile(file, "rw");
+						mStream = new RandomAccessFile(mFile, "rw");
 					} catch (IOException e) {
 						throw new RuntimeException(e);
 					}

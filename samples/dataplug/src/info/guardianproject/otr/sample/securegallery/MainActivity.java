@@ -62,7 +62,12 @@ public class MainActivity extends Activity {
 			doRequestGallery();
 		}
 		if (action.equals( "info.guardianproject.otr.app.im.dataplug.SHOW_IMAGE") ) {
-			doResponseGalleryImage(sContent);
+		    String path = intent.getStringExtra(Api.EXTRA_PATH);
+		    if( path == null ) {
+		        doResponseGalleryImage(sContent);
+		        return ; 
+		    }
+            doResponseGalleryImage( path );
 		}
 	}
 
@@ -186,8 +191,14 @@ public class MainActivity extends Activity {
 		MainActivity.showBitmap( this, bitmap ) ;
 		return ;
 	}
-
-	public static void startActivity_REQUEST_GALLERY( String aRequestId, Context aContext ) {
+	
+    private void doResponseGalleryImage( String aPath ) throws JSONException, IOException {
+        MainActivity.console( "doResponseGalleryImage: path=" + aPath );
+        Bitmap bitmap = Utils.getScaledBitmap(aPath, 256);
+        MainActivity.showBitmap( this, bitmap ) ;
+    }
+    
+    public static void startActivity_REQUEST_GALLERY( String aRequestId, Context aContext ) {
 		// repond with : accountid, friendid, requestid, body(json)
 		Intent intent = new Intent(aContext, MainActivity.class);
 		intent.setAction("info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY");
@@ -203,5 +214,13 @@ public class MainActivity extends Activity {
 		sContent = aContent;
 		aContext.startActivity(intent);
 	}
+
+    public static void startActivity_SHOW_IMAGE(SecureGalleryService aContext, String aAbsolutePath) {
+        Intent intent = new Intent(aContext, MainActivity.class);
+        intent.setAction("info.guardianproject.otr.app.im.dataplug.SHOW_IMAGE");
+        intent.putExtra(Api.EXTRA_PATH, aAbsolutePath);
+        intent.setFlags( Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED );
+        aContext.startActivity(intent);
+    }
 
 }

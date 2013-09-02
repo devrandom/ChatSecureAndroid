@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.ByteBuffer;
@@ -16,6 +17,9 @@ import java.security.NoSuchAlgorithmException;
 
 import android.content.Context;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.BitmapFactory.Options;
 import android.net.Uri;
 import android.provider.MediaStore;
 
@@ -138,4 +142,28 @@ public class Utils {
             throw new RuntimeException(e);
         }
     }
+
+    public static Bitmap getScaledBitmap( String aPath, int destWidth ) throws IOException {
+            InputStream is = new FileInputStream(new File( aPath ));
+            BitmapFactory.Options bitmapOptions = new BitmapFactory.Options();
+            bitmapOptions.inJustDecodeBounds = true;
+            BitmapFactory.decodeStream(is, null, bitmapOptions);
+            is.close();
+            is = null;
+            MainActivity.console( "getScaledBitmap: source dim=" + bitmapOptions.outWidth + "/" + bitmapOptions.outHeight );
+            
+            if(destWidth == 0) destWidth = bitmapOptions.outWidth;
+    //        if(destHeight == 0) destHeight = bitmapOptions.outHeight;
+            int widthScale = bitmapOptions.outWidth / destWidth;
+    //        int heightScale = bitmapOptions.outHeight / destHeight;
+    //        int targetScale = widthScale < heightScale ? widthScale : heightScale;
+            bitmapOptions.inSampleSize = widthScale;
+            bitmapOptions.inJustDecodeBounds = false;
+    
+            is = new FileInputStream(new File( aPath ));
+            Bitmap bitmap = BitmapFactory.decodeStream(is, null, bitmapOptions);
+            is.close();
+            is = null;
+            return bitmap;
+        }
 }

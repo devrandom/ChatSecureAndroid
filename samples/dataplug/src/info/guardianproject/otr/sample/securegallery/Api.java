@@ -32,6 +32,7 @@ public class Api {
 	public static final String EXTRA_METHOD = "Method";
 	public static final String EXTRA_URI = "Uri";
 	public static final String EXTRA_CONTENT = "Content";
+    public static final String EXTRA_PATH = "Path";
 	public static final String EXTRA_REQUEST = "Request";
 	public static final String EXTRA_RESPONSE = "Response";
 	public static final String EXTRA_HEADERS = "Headers";
