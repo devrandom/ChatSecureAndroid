@@ -39,6 +39,9 @@ import com.google.common.collect.Sets;
  * @author liorsaar
  */
 public abstract class DataplugService extends Service {
+    
+    public static final boolean LOOPBACK = true ;
+    
 	public static final int MAX_CHUNK_LENGTH = 32768;
 	private  static final int MAX_OUTSTANDING = 5;
     private static final int MAX_TRANSFER_LENGTH = 1024*1024*64;
@@ -353,6 +356,10 @@ public abstract class DataplugService extends Service {
 		zIntent.putExtra( Api.EXTRA_ACCOUNT_ID , aAccountId ) ;
 		zIntent.putExtra( Api.EXTRA_FRIEND_ID , aFriendId ) ;
 		zIntent.putExtra( Api.EXTRA_REQUEST_ID , request.getId() ) ;
+		//
+        if( LOOPBACK ) { // TODO abstract
+            zIntent.addCategory(Api.CATEGORY_LOOPBACK);
+        }
 		startService( zIntent ) ;
 		return request;
 	}
@@ -390,6 +397,10 @@ public abstract class DataplugService extends Service {
 		zIntent.putExtra( Api.EXTRA_REQUEST_ID , request.getId() ) ;
 		zIntent.putExtra( Api.EXTRA_CONTENT, aContent ) ;
 		zIntent.putExtra( Api.EXTRA_HEADERS, aHeaders ) ;
+        //
+        if( LOOPBACK ) { // TODO abstract
+            zIntent.addCategory(Api.CATEGORY_LOOPBACK);
+        }
 		startService( zIntent ) ;
 	}
 

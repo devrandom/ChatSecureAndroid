@@ -13,6 +13,8 @@ public class Api {
     /** Response from plugin to remote */
     public static final String ACTION_OUTGOING_RESPONSE = "info.guardianproject.otr.app.im.dataplug.OUTGOING_RESPONSE";
 
+    public static final String CATEGORY_LOOPBACK = "info.guardianproject.otr.dataplug.LOOPBACK";
+    
     public static final String DATAPLUG_TAG = "GB.dataplug";
     public static final String EXTRA_TOKEN = "Token";
     public static final String EXTRA_FRIEND_ID = "FriendId";

@@ -7,9 +7,11 @@
     <uses-sdk
         android:minSdkVersion="8"
         android:targetSdkVersion="17" />
+
     <uses-permission android:name="info.guardianproject.otr.app.im.permission.IM_SERVICE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
     <application
         android:allowBackup="true"
         android:icon="@drawable/secure_gallery_icon"
@@ -24,15 +26,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <intent-filter>
-            	<action android:name="info.guardianproject.otr.app.im.dataplug.SHOW_IMAGE" />
+                <action android:name="info.guardianproject.otr.app.im.dataplug.SHOW_IMAGE" />
+
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <intent-filter>
-            	<action android:name="info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY" />
+                <action android:name="info.guardianproject.otr.app.im.dataplug.REQUEST_GALLERY" />
+
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
-        
+
         <!-- Dataplug -->
         <service android:name=".SecureGalleryService" >
             <intent-filter>
@@ -51,7 +55,6 @@
                 <action android:name="info.guardianproject.otr.app.im.dataplug.INCOMING_RESPONSE" />
             </intent-filter>
         </service>
-        
     </application>
 
 </manifest>

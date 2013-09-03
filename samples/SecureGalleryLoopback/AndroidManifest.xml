@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="info.guardianproject.otr.sample.securegallery.loopback"
+    android:versionCode="1"
+    android:versionName="1.0" >
+
+    <uses-sdk
+        android:minSdkVersion="8"
+        android:targetSdkVersion="17" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/AppTheme" >
+        <activity
+            android:name="info.guardianproject.otr.sample.securegallery.loopback.MainActivity"
+            android:label="@string/app_name" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- android:process="info.guardianproject.otr.app.process.im" -->
+        <service
+            android:name=".LoopbackService"
+            android:exported="true" >
+            <intent-filter>
+                <category android:name="info.guardianproject.otr.dataplug.LOOPBACK" />
+
+                <action android:name="info.guardianproject.otr.app.im.dataplug.REGISTER" />
+            </intent-filter>
+            <intent-filter>
+                <category android:name="info.guardianproject.otr.dataplug.LOOPBACK" />
+
+                <action android:name="info.guardianproject.otr.app.im.dataplug.OUTGOING_REQUEST" />
+            </intent-filter>
+            <intent-filter>
+                <category android:name="info.guardianproject.otr.dataplug.LOOPBACK" />
+
+                <action android:name="info.guardianproject.otr.app.im.dataplug.OUTGOING_RESPONSE" />
+            </intent-filter>
+        </service>
+    </application>
+
+</manifest>
