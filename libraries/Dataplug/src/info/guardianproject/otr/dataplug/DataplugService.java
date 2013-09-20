@@ -13,9 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package info.guardianproject.otr.sample.securegallery;
-
-import info.guardianproject.otr.dataplug.Api;
+package info.guardianproject.otr.dataplug;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -29,6 +27,7 @@ import android.app.Service;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.util.Log;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -74,7 +73,7 @@ public abstract class DataplugService extends Service {
 
 	}
 
-    class Transfer {
+    public class Transfer {
 		private String mAccountId;
 		private String mFriendId;
 		private String mUri;
@@ -461,10 +460,10 @@ public abstract class DataplugService extends Service {
 	abstract protected void handleIncomingRequest(Request aRequest) throws Exception ;
 
 	private void error(String message) {
-		MainActivity.error( this, message ) ;
+		Log.e(TAG, message);
 	}
 
 	private void info(String message) {
-		MainActivity.console( message ) ;
+		Log.i(TAG, message);
 	}
 }

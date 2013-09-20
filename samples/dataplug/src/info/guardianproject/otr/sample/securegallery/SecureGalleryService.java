@@ -16,6 +16,7 @@
 package info.guardianproject.otr.sample.securegallery;
 
 import info.guardianproject.otr.dataplug.Api;
+import info.guardianproject.otr.dataplug.DataplugService;
 
 import java.io.File;
 import java.io.IOException;
