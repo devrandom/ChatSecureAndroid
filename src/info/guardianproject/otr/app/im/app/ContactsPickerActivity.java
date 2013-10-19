@@ -85,7 +85,7 @@ public class ContactsPickerActivity extends ListActivity {
         mData = intent.getData();
 
         if (mData == null) {
-            return false;
+            mData = Imps.Contacts.CONTENT_URI;
         }
         
 //        mExcludeClause = buildExcludeClause(intent.getStringArrayExtra(EXTRA_EXCLUDED_CONTACTS));
@@ -112,7 +112,7 @@ public class ContactsPickerActivity extends ListActivity {
         }
         clause.append(')');
         
-        Cursor cursor = managedQuery(mData, ContactView.CONTACT_PROJECTION, mExcludeClause, excludedVals,
+        Cursor cursor = managedQuery(mData, ContactView.CONTACT_PROJECTION, clause.toString(), excludedVals,
                 Imps.Contacts.DEFAULT_SORT_ORDER);
         if (cursor == null) {
             return false;

@@ -313,7 +313,7 @@ android:anyDensity="true"
         </activity>
 
         <activity android:name=".app.ContactsPickerActivity" android:label="@string/contacts_picker_title"
-            android:exported="false"
+            android:exported="true"
             >
             <intent-filter>
                 <action android:name="android.intent.action.PICK" />
