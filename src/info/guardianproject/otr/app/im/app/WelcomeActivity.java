@@ -19,14 +19,11 @@ package info.guardianproject.otr.app.im.app;
 import info.guardianproject.cacheword.CacheWordActivityHandler;
 import info.guardianproject.cacheword.ICacheWordSubscriber;
 import info.guardianproject.cacheword.SQLCipherOpenHelper;
-import info.guardianproject.otr.OtrAndroidKeyManagerImpl;
 import info.guardianproject.otr.app.im.R;
 import info.guardianproject.otr.app.im.engine.ImConnection;
 import info.guardianproject.otr.app.im.provider.Imps;
-import info.guardianproject.otr.app.im.ui.AboutActivity;
 import net.hockeyapp.android.CrashManager;
 import net.hockeyapp.android.UpdateManager;
-import net.sqlcipher.database.SQLiteDatabase;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ContentUris;
@@ -36,14 +33,11 @@ import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.database.Cursor;
 import android.net.Uri;
+import android.net.Uri.Builder;
 import android.os.Bundle;
 import android.os.Message;
-import android.os.RemoteException;
 import android.preference.PreferenceManager;
 import android.util.Log;
-import android.view.View;
-import android.view.View.OnClickListener;
-import android.widget.Button;
 import android.widget.Toast;
 
 import com.actionbarsherlock.view.Menu;
@@ -57,7 +51,6 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
     private Cursor mProviderCursor;
     private ImApp mApp;
     private SimpleAlertHandler mHandler;
-    private String mDefaultLocale;
     private SignInHelper mSignInHelper;
 
     private boolean mDoSignIn = true;
@@ -87,38 +80,46 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
     private SharedPreferences mPrefs = null;
     
     private CacheWordActivityHandler mCacheWord = null;
+    private boolean mDoLock;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
-        SQLiteDatabase.loadLibs(this);
+
+        mApp = (ImApp)getApplication();
+        mHandler = new MyHandler(this);
+
         
         mSignInHelper = new SignInHelper(this);
        
         mPrefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        mDefaultLocale = mPrefs.getString(getString(R.string.pref_default_locale), null);
         
         this.getSupportActionBar().hide();
         
       
         mDoSignIn = getIntent().getBooleanExtra("doSignIn", true);
+        mDoLock = getIntent().getBooleanExtra("doLock", false);
         
+        mApp.maybeInit(this);
+        
+        if (!mDoLock && openEncryptedStores(null, false))
+            // DB already open, or unencrypted
+            // openEncryptedStores has finished()
+            return;
+        else
+            connectToCacheWord ();
+
         checkForCrashes();
         
         checkForUpdates();
         
      
     }
-    
+
     private void connectToCacheWord ()
     {
         
         mCacheWord = new CacheWordActivityHandler(this, (ICacheWordSubscriber)this);
-
-        mCacheWord = new CacheWordActivityHandler(this, (ICacheWordSubscriber)this);
-        
-        ((ImApp)getApplication()).setCacheWord(mCacheWord);
         
         mCacheWord.connectToService();
         
@@ -127,15 +128,16 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
 
    
     @SuppressWarnings("deprecation")
-    private boolean cursorUnlocked(String pKey) {
+    private boolean cursorUnlocked(String pKey, boolean allowCreate) {
         try {
-            mApp = (ImApp)getApplication();
-            mHandler = new MyHandler(this);
-            ImPluginHelper.getInstance(this).loadAvailablePlugins();
-
             Uri uri = Imps.Provider.CONTENT_URI_WITH_ACCOUNT;
             
-            uri = uri.buildUpon().appendQueryParameter(ImApp.CACHEWORD_PASSWORD_KEY, pKey).build();
+            Builder builder = uri.buildUpon();
+            if (pKey != null)
+                builder.appendQueryParameter(ImApp.CACHEWORD_PASSWORD_KEY, pKey);
+            if (!allowCreate)
+                builder = builder.appendQueryParameter(ImApp.NO_CREATE_KEY, "1");
+            uri = builder.build();
             
             mProviderCursor = managedQuery(uri,
                     PROVIDER_PROJECTION, Imps.Provider.CATEGORY + "=?" /* selection */,
@@ -144,6 +146,8 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
  
             if (mProviderCursor != null)
             {
+                ImPluginHelper.getInstance(this).loadAvailablePlugins();
+
                 mProviderCursor.moveToFirst();
             
                 return true;
@@ -154,10 +158,13 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
             }
             
         } catch (Exception e) {
-            Log.e(ImApp.LOG_TAG, e.getMessage(), e);
-            
-            Toast.makeText(this, "MAJOR ERROR: Unable to unlock or load app database. Please re-install the app or clear data.",Toast.LENGTH_LONG).show();
-            finish();
+            // Only complain if we thought this password should succeed
+            if (allowCreate) {
+                Log.e(ImApp.LOG_TAG, e.getMessage(), e);
+
+                Toast.makeText(this, "MAJOR ERROR: Unable to unlock or load app database. Please re-install the app or clear data.",Toast.LENGTH_LONG).show();
+                finish();
+            }
             
             // needs to be unlocked
             return false;
@@ -178,7 +185,8 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
             mHandler.unregisterForBroadcastEvents();
 
         super.onPause();
-        mCacheWord.onPause();
+        if (mCacheWord != null)
+            mCacheWord.onPause();
     }
 
 
@@ -189,48 +197,11 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
     protected void onResume() {
         super.onResume();
 
-        if (mCacheWord == null)
-            connectToCacheWord ();
-       
-        try
-        {
+        if (mCacheWord != null)
             mCacheWord.onResume();
-        }
-        catch (Exception e)
-        {
-            Log.e("CacheWord","unable to bind to cacheword");
-        }
-        
-        if (!mCacheWord.isLocked())
-        {
-            String pkey = SQLCipherOpenHelper.encodeRawKey(mCacheWord.getEncryptionKey());
-            
-            if (pkey != null)
-            {
-                cursorUnlocked(pkey);
-                
-                doOnResume();
-            }
-        }
-        else
-        {
-            showLockScreen();
-        }
-        
     }
 
     private void doOnResume() {
-
-        
-        if (mApp == null) {
-
-            mApp = (ImApp)getApplication();
-            mHandler = new MyHandler(this);
-            ImPluginHelper.getInstance(this).loadAvailablePlugins();
-        }
-
-       
-        mApp.setAppTheme(this);
         mHandler.registerForBroadcastEvents();
 
         int countSignedIn = accountsSignedIn();
@@ -241,7 +212,7 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
         if (countAvailable == 1) {
             // If just one account is available for auto-signin, go there immediately after service starts trying
             // to connect.
-            mSignInHelper.setSignInListener(new SignInHelper.Listener() {
+            mSignInHelper.setSignInListener(new SignInHelper.SignInListener() {
                 public void connectedToService() {
                 }
                 public void stateChanged(int state, long accountId) {
@@ -531,43 +502,61 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
     public void onCacheWordUninitialized() {
         Log.d(ImApp.LOG_TAG,"cache word uninit");
         
-        showLockScreen();
+        if (mDoLock) {
+            Log.d(ImApp.LOG_TAG, "cacheword lock requested but already uninitialized");
+        } else {
+            showLockScreen();
+        }
+        finish();
     }
 
     void showLockScreen() {
         Intent intent = new Intent(this, LockScreenActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        intent.putExtra("originalIntent", getIntent());
+    //    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        Intent returnIntent = new Intent(this, WelcomeActivity.class);
+        returnIntent.putExtra("doSignIn", mDoSignIn);
+        intent.putExtra("originalIntent", returnIntent);
         startActivity(intent);
        
     }
     
     @Override
     public void onCacheWordLocked() {
-     
-        
+        if (mDoLock) {
+            Log.d(ImApp.LOG_TAG, "cacheword lock requested but already locked");
+        } else {
+            showLockScreen();
+        }
+        finish();
     }
 
     @Override
     public void onCacheWordOpened() {
+        if (mDoLock) {
+            Log.d(ImApp.LOG_TAG, "cacheword lock");
+            mCacheWord.manuallyLock();
+            finish();
+            return;
+        }
        Log.d(ImApp.LOG_TAG,"cache word opened");
        
+       byte[] encryptionKey = mCacheWord.getEncryptionKey();
+       openEncryptedStores(encryptionKey, true);
 
-       String pkey = SQLCipherOpenHelper.encodeRawKey(mCacheWord.getEncryptionKey());
-       
-       if (pkey != null)
-       {
-            
-           cursorUnlocked(pkey);
-           
-           ((ImApp)getApplication()).initOtrStoreKey();
-           
-       
-           int defaultTimeout = Integer.parseInt(mPrefs.getString("pref_cacheword_timeout",ImApp.DEFAULT_TIMEOUT_CACHEWORD));       
-           mCacheWord.setTimeoutMinutes(defaultTimeout);
-       }
-       
+       int defaultTimeout = Integer.parseInt(mPrefs.getString("pref_cacheword_timeout",ImApp.DEFAULT_TIMEOUT_CACHEWORD));       
+
+       mCacheWord.setTimeoutMinutes(defaultTimeout);
+    }
+
+    private boolean openEncryptedStores(byte[] key, boolean allowCreate) {
+        String pkey = (key != null) ? SQLCipherOpenHelper.encodeRawKey(key) : "";
         
+        if (cursorUnlocked(pkey, allowCreate)) {
+            doOnResume();
+            return true;
+        } else {
+            return false;
+        }
     }
     
 

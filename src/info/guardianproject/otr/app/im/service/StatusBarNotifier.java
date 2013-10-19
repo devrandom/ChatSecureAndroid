@@ -20,7 +20,9 @@ package info.guardianproject.otr.app.im.service;
 import info.guardianproject.otr.app.im.R;
 import info.guardianproject.otr.app.im.app.ContactListActivity;
 import info.guardianproject.otr.app.im.app.NewChatActivity;
+import info.guardianproject.otr.app.im.app.WelcomeActivity;
 import info.guardianproject.otr.app.im.provider.Imps;
+import info.guardianproject.util.SystemServices;
 
 import java.util.HashMap;
 
@@ -81,7 +83,7 @@ public class StatusBarNotifier {
         Intent intent = new Intent(Intent.ACTION_VIEW, ContentUris.withAppendedId(
                 Imps.Chats.CONTENT_URI, chatId));
         intent.addCategory(info.guardianproject.otr.app.im.app.ImApp.IMPS_CATEGORY);
-        notify(username, title, snippet, msg, providerId, accountId, intent, lightWeightNotify);
+        notify(username, title, snippet, msg, providerId, accountId, intent, lightWeightNotify, R.drawable.ic_stat_status);
     }
 
     public void notifySubscriptionRequest(long providerId, long accountId, long contactId,
@@ -97,7 +99,7 @@ public class StatusBarNotifier {
                 ContentUris.withAppendedId(Imps.Contacts.CONTENT_URI, contactId));
         intent.putExtra(ImServiceConstants.EXTRA_INTENT_PROVIDER_ID, providerId);
         intent.putExtra(ImServiceConstants.EXTRA_INTENT_FROM_ADDRESS, username);
-        notify(username, title, message, message, providerId, accountId, intent, false);
+        notify(username, title, message, message, providerId, accountId, intent, false, R.drawable.ic_stat_status);
     }
 
     public void notifyGroupInvitation(long providerId, long accountId, long invitationId,
@@ -108,7 +110,7 @@ public class StatusBarNotifier {
 
         String title = mContext.getString(R.string.notify_groupchat_label);
         String message = mContext.getString(R.string.group_chat_invite_notify_text, username);
-        notify(username, title, message, message, providerId, accountId, intent, false);
+        notify(username, title, message, message, providerId, accountId, intent, false, R.drawable.ic_stat_status);
     }
 
     public void notifyLoggedIn(long providerId, long accountId) {
@@ -118,9 +120,20 @@ public class StatusBarNotifier {
 
         String title = mContext.getString(R.string.app_name);
         String message = mContext.getString(R.string.presence_available);
-        notify(message, title, message, message, providerId, accountId, intent, false);
+        notify(message, title, message, message, providerId, accountId, intent, false, R.drawable.ic_stat_status);
     }
 
+    public void notifyLocked() {
+
+        Intent intent = new Intent(mContext, WelcomeActivity.class);
+
+        String title = mContext.getString(R.string.app_name);
+        String message = mContext.getString(R.string.account_setup_pers_now_title);
+        notify(message, title, message, message, -1, -1, intent, true, R.drawable.notify_chatsecure);
+
+        
+    }
+    
     public void notifyDisconnected(long providerId, long accountId) {
 
         Intent intent = new Intent(mContext, NewChatActivity.class);
@@ -128,19 +141,27 @@ public class StatusBarNotifier {
 
         String title = mContext.getString(R.string.app_name);
         String message = mContext.getString(R.string.presence_offline);
-        notify(message, title, message, message, providerId, accountId, intent, false);
+        notify(message, title, message, message, providerId, accountId, intent, false, R.drawable.ic_stat_status);
     }
 
-   
+
+    public void notifyFile(long providerId, long accountId, long id, String username,
+            String nickname, String path, Uri uri, String type, boolean b) {
+        String title = nickname;
+        String message = mContext.getString(R.string.file_notify_text, path, nickname);
+        Intent intent = SystemServices.Viewer.getViewIntent(uri, type);
+        notify(message, title, message, message, providerId, accountId, intent, false, R.drawable.ic_stat_status);
+    }
+
     public void dismissNotifications(long providerId) {
-        /*
+      
         synchronized (mNotificationInfos) {
             NotificationInfo info = mNotificationInfos.get(providerId);
             if (info != null) {
                 mNotificationManager.cancel(info.computeNotificationId());
                 mNotificationInfos.remove(providerId);
             }
-        }*/
+        }
     }
 
     public void dismissChatNotification(long providerId, String username) {
@@ -164,8 +185,7 @@ public class StatusBarNotifier {
                     log("cancelNotify: new notification" + " mTitle=" + info.getTitle()
                         + " mMessage=" + info.getMessage() + " mIntent=" + info.getIntent());
                 }
-                mNotificationManager.notify(info.computeNotificationId(),
-                        info.createNotification("", true));
+                mNotificationManager.cancel(info.computeNotificationId());
             }
         }
     }
@@ -183,7 +203,7 @@ public class StatusBarNotifier {
     }
 
     private void notify(String sender, String title, String tickerText, String message,
-            long providerId, long accountId, Intent intent, boolean lightWeightNotify) {
+            long providerId, long accountId, Intent intent, boolean lightWeightNotify, int icon) {
 
        // intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
 
@@ -199,7 +219,8 @@ public class StatusBarNotifier {
         }
 
         mNotificationManager.notify(info.computeNotificationId(),
-                info.createNotification(tickerText, lightWeightNotify));
+                info.createNotification(tickerText, lightWeightNotify, icon));
+        
     }
 
     private void setRinger(long providerId, NotificationCompat.Builder builder) {
@@ -248,6 +269,8 @@ public class StatusBarNotifier {
         }
 
         public int computeNotificationId() {
+            if (lastItem == null)
+                return (int)mProviderId;
             return lastItem.mTitle.hashCode();
         }
 
@@ -274,17 +297,17 @@ public class StatusBarNotifier {
             return true;
         }
 
-        public Notification createNotification(String tickerText, boolean lightWeightNotify) {
+        public Notification createNotification(String tickerText, boolean lightWeightNotify, int icon) {
             NotificationCompat.Builder builder = new NotificationCompat.Builder(mContext);
             Intent intent = getIntent();
             builder
-                .setSmallIcon(R.drawable.ic_stat_status)
+                .setSmallIcon(icon)
                 .setTicker(lightWeightNotify ? null : tickerText)
                 .setWhen(System.currentTimeMillis())
                 .setLights(0xff00ff00, 300, 1000)
                 .setContentTitle(getTitle())
                 .setContentText(getMessage())
-                .setContentIntent(PendingIntent.getActivity(mContext, 0, intent, 0))
+                .setContentIntent(PendingIntent.getActivity(mContext, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT))
                 .setAutoCancel(true)
                 ;
 
@@ -300,7 +323,7 @@ public class StatusBarNotifier {
             intent.setType(Imps.Contacts.CONTENT_TYPE);
             intent.setClass(mContext, ContactListActivity.class);
             intent.putExtra(ImServiceConstants.EXTRA_INTENT_ACCOUNT_ID, mAccountId);
-            intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+       //     intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
 
             return intent;
         }
@@ -311,7 +334,7 @@ public class StatusBarNotifier {
             intent.putExtra(ImServiceConstants.EXTRA_INTENT_PROVIDER_ID, mProviderId);
             intent.putExtra(ImServiceConstants.EXTRA_INTENT_ACCOUNT_ID, mAccountId);
             intent.putExtra(ImServiceConstants.EXTRA_INTENT_SHOW_MULTIPLE, true);
-            intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+         //   intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
 
             return intent;
         }

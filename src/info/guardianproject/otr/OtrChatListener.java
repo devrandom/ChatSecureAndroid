@@ -1,9 +1,11 @@
 package info.guardianproject.otr;
 
+import info.guardianproject.otr.OtrDataHandler.Transfer;
 import info.guardianproject.otr.app.im.engine.ChatSession;
 import info.guardianproject.otr.app.im.engine.ImErrorInfo;
 import info.guardianproject.otr.app.im.engine.Message;
 import info.guardianproject.otr.app.im.engine.MessageListener;
+import info.guardianproject.util.Debug;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +34,8 @@ public class OtrChatListener implements MessageListener {
         String body = msg.getBody();
         String from = msg.getFrom().getAddress();
         String to = msg.getTo().getAddress();
+        
+        body = Debug.injectErrors(body);
 
         SessionStatus otrStatus = mOtrChatManager.getSessionStatus(to, from);
 
@@ -40,7 +44,10 @@ public class OtrChatListener implements MessageListener {
         List<TLV> tlvs = new ArrayList<TLV>();
 
         try {
-            body = mOtrChatManager.decryptMessage(to, from, body, tlvs);
+            // No OTR for groups (yet)
+            if (!session.getParticipant().isGroup()) {
+                body = mOtrChatManager.decryptMessage(to, from, body, tlvs);
+            }
 
             if (body != null) {
                 msg.setBody(body);                 
@@ -49,8 +56,8 @@ public class OtrChatListener implements MessageListener {
         
         } catch (OtrException e) {
             
-            OtrDebugLogger.log("error decrypting message");                
-            msg.setBody("error decryption message body");
+            OtrDebugLogger.log("error decrypting message", e);            
+            msg.setBody("[You received an unreadable encrypted message]");
             mMessageListener.onIncomingMessage(session, msg);
         }
         
@@ -104,5 +111,10 @@ public class OtrChatListener implements MessageListener {
     @Override
     public void onStatusChanged(ChatSession session) {
         mMessageListener.onStatusChanged(session);
+    }
+    
+    @Override
+    public void onIncomingTransferRequest(Transfer transfer) {
+        mMessageListener.onIncomingTransferRequest(transfer);
     }
 }

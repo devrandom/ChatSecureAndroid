@@ -1,40 +1,16 @@
 package info.guardianproject.otr.app.im.engine;
 
+import info.guardianproject.otr.app.im.IDataListener;
+
 import java.util.Map;
 
-/**
- * Handle communication with the remote (using an OTR channel)
- * 
- * @author devrandom
- *
- */
 public interface DataHandler {
     /**
-     * Callback when a request comes in.
-     * 
      * @param from this is OUR address
      * @param session the chat session
      * @param value the serialized request
      */
-    void onIncomingRequest(Address us, byte[] value);
-
-    /**
-     * Callback when a response comes in.
-     * 
-     * @param from this is OUR address
-     * @param session the chat session
-     * @param value the serialized response
-     */
-    void onIncomingResponse(Address us, byte[] value);
-
-    /**
-     * Offer data to the remote.
-     * 
-     * @param us
-     * @param localUri
-     * @param headers
-     */
-    void offerData(Address us, String localUri, Map<String, String> headers);
+    void onIncomingRequest(Address from, Address to, byte[] value);
 
     /**
      * Send an arbitrary request to the remote.
@@ -58,4 +34,10 @@ public interface DataHandler {
      * @param content
      */
     void sendDataResponse(Address us, int code, String statusString, String requestId, byte[] content, String headers);
+
+    void onIncomingResponse(Address from, Address to, byte[] value);
+
+    void offerData(Address us, String localUri, Map<String, String> headers);
+    
+    void setDataListener(IDataListener dataListener);
 }

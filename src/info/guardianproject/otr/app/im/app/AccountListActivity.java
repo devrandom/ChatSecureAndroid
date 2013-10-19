@@ -16,18 +16,14 @@
 
 package info.guardianproject.otr.app.im.app;
 
-import info.guardianproject.cacheword.CacheWordActivityHandler;
-import info.guardianproject.cacheword.ICacheWordSubscriber;
-import info.guardianproject.cacheword.SQLCipherOpenHelper;
 import info.guardianproject.otr.OtrAndroidKeyManagerImpl;
+import info.guardianproject.otr.OtrDebugLogger;
 import info.guardianproject.otr.app.im.IImConnection;
 import info.guardianproject.otr.app.im.R;
 import info.guardianproject.otr.app.im.plugin.xmpp.auth.GTalkOAuth2;
 import info.guardianproject.otr.app.im.provider.Imps;
 import info.guardianproject.otr.app.im.service.ImServiceConstants;
-import info.guardianproject.util.LogCleaner;
 
-import java.io.IOException;
 import java.util.List;
 
 import net.hockeyapp.android.CrashManager;
@@ -47,7 +43,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.os.RemoteException;
 import android.preference.PreferenceManager;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -65,19 +60,11 @@ import com.actionbarsherlock.app.SherlockListActivity;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuInflater;
 import com.actionbarsherlock.view.MenuItem;
-import com.github.espiandev.showcaseview.ShowcaseView;
+import com.google.zxing.integration.android.IntentIntegrator;
 
-public class AccountListActivity extends SherlockListActivity implements View.OnCreateContextMenuListener, ICacheWordSubscriber, ProviderListItem.SignInManager, ShowcaseView.OnShowcaseEventListener {
+public class AccountListActivity extends SherlockListActivity implements View.OnCreateContextMenuListener, ProviderListItem.SignInManager {
 
     private static final String TAG = ImApp.LOG_TAG;
-
-    private static final int ID_SIGN_IN = Menu.FIRST + 1;
-    private static final int ID_SIGN_OUT = Menu.FIRST + 2;
-    private static final int ID_EDIT_ACCOUNT = Menu.FIRST + 3;
-    private static final int ID_REMOVE_ACCOUNT = Menu.FIRST + 4;
-//    private static final int ID_SIGN_OUT_ALL = Menu.FIRST + 5;
-    private static final int ID_ADD_ACCOUNT = Menu.FIRST + 6;
-    private static final int ID_VIEW_CONTACT_LIST = Menu.FIRST + 7;
 
     private ProviderAdapter mAdapter;
     private Cursor mProviderCursor;
@@ -86,11 +73,6 @@ public class AccountListActivity extends SherlockListActivity implements View.On
 
     private SignInHelper mSignInHelper;
 
-    private CacheWordActivityHandler mCacheWord;
-    private ShowcaseView sv;
-
-    private final static int SCAN_REQUEST_CODE = 7171; //otr key import scanning
-    
     private static final String[] PROVIDER_PROJECTION = {
                                                          Imps.Provider._ID,
                                                          Imps.Provider.NAME,
@@ -119,26 +101,32 @@ public class AccountListActivity extends SherlockListActivity implements View.On
 
     @Override
     protected void onCreate(Bundle icicle) {
-
-        ((ImApp)getApplication()).setAppTheme(this);
-      
         super.onCreate(icicle);
         
-        mCacheWord = new CacheWordActivityHandler(this, (ICacheWordSubscriber)this);
-        ((ImApp)getApplication()).setCacheWord(mCacheWord);
-        
+        mApp = (ImApp)getApplication();
+        mApp.maybeInit(this);
+
+        mApp.setAppTheme(this);
         ThemeableActivity.setBackgroundImage(this);
         
-        mApp = (ImApp)getApplication();
         mHandler = new MyHandler(this);
         mSignInHelper = new SignInHelper(this);
 
-        ImPluginHelper.getInstance(this).loadAvailablePlugins();
-
+        if (!initProviderCursor()) {
+            onDBLocked();
+        }
+        
+        SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
+        boolean themeDark = settings.getBoolean("themeDark", false);
+        String themebg = settings.getString("pref_background", null);
+        
+        if (themebg == null && (!themeDark))
+        {
+            getListView().setBackgroundColor(getResources().getColor(android.R.color.white));
+        }
+        
         ViewGroup godfatherView = (ViewGroup) this.getWindow().getDecorView();
      
-      //  registerForContextMenu(getListView());
-        
         View emptyView = getLayoutInflater().inflate(R.layout.empty_account_view, godfatherView, false);
         emptyView.setVisibility(View.GONE);
         ((ViewGroup)getListView().getParent()).addView(emptyView);
@@ -160,27 +148,14 @@ public class AccountListActivity extends SherlockListActivity implements View.On
             
         });
         
-        checkForUpdates();
-        doShowcase();
         
-        getWindow().setBackgroundDrawableResource(R.drawable.bgcolor2);
     }
     
-    private void doShowcase ()
-    {
-        ShowcaseView.ConfigOptions co = new ShowcaseView.ConfigOptions();
-        co.hideOnClickOutside = true;
-      //  sv = ShowcaseView.insertShowcaseView(getListView(), this, "Many of You!", "ChatSecure supports accounts on your favorite services, and your own hosted servers as well!", co);
-        
-        
-      //  sv.setOnShowcaseEventListener(this);
-    }
     
     @Override
     protected void onPause() {
         mHandler.unregisterForBroadcastEvents();
         
-        mCacheWord.onPause();
         super.onPause();
     }
 
@@ -198,19 +173,10 @@ public class AccountListActivity extends SherlockListActivity implements View.On
     protected void onResume() {
 
         super.onResume();
-        
-        mApp = (ImApp)getApplication();
-        mApp.startImServiceIfNeed();
-        mApp.setAppTheme(this);
+
+        ThemeableActivity.setBackgroundImage(this);
         
         mHandler.registerForBroadcastEvents();
-        mCacheWord.onResume();
-        
-        if (!mCacheWord.isLocked())
-        {
-           onCacheWordOpened();
-           
-        }
         
         checkForCrashes();
         
@@ -253,7 +219,7 @@ public class AccountListActivity extends SherlockListActivity implements View.On
         mProviderCursor.moveToFirst();
         while (!mProviderCursor.isAfterLast())
         {
-            long cAccountId = mProviderCursor.getLong(this.ACTIVE_ACCOUNT_ID_COLUMN);
+            long cAccountId = mProviderCursor.getLong(ACTIVE_ACCOUNT_ID_COLUMN);
             
             try
             {
@@ -274,7 +240,7 @@ public class AccountListActivity extends SherlockListActivity implements View.On
         mProviderCursor.moveToFirst();
         while (!mProviderCursor.isAfterLast())
         {
-            long cAccountId = mProviderCursor.getLong(this.ACTIVE_ACCOUNT_ID_COLUMN);
+            long cAccountId = mProviderCursor.getLong(ACTIVE_ACCOUNT_ID_COLUMN);
             
             if (cAccountId == accountId)
                 break;
@@ -299,16 +265,16 @@ public class AccountListActivity extends SherlockListActivity implements View.On
     {
 
         Intent intent = new Intent(this, NewChatActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
         intent.putExtra(ImServiceConstants.EXTRA_INTENT_ACCOUNT_ID, accountId);
+        
         startActivity(intent);
     
     }
 
     private void handlePanic() {
-        
         signOutAll ();
-        ((ImApp)getApplication()).forceStopImService();
-        
     }
  
     private void signOutAll() {
@@ -322,13 +288,28 @@ public class AccountListActivity extends SherlockListActivity implements View.On
                 long accountId = mProviderCursor.getLong(ACTIVE_ACCOUNT_ID_COLUMN);
                 signOut(accountId);
             }
-                    
-            if (mCacheWord != null)
-                mCacheWord.manuallyLock();
-            
-            finish();
         }
         
+        goLock();
+   }
+
+    private void goLock() {
+        mHandler.postDelayed(new Runnable()
+        {
+            public void run ()
+            {
+                mApp.forceStopImService();
+                
+            }
+        }, 2000l);
+        
+        Intent intent = new Intent(getApplicationContext(), WelcomeActivity.class);
+        // Request lock
+        intent.putExtra("doLock", true);
+        // Clear the backstack
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+        finish();
     }
 
     public void signOut(final long accountId) {
@@ -339,7 +320,7 @@ public class AccountListActivity extends SherlockListActivity implements View.On
             mProviderCursor.moveToFirst();
             while (!mProviderCursor.isAfterLast())
             {
-                long cAccountId = mProviderCursor.getLong(this.ACTIVE_ACCOUNT_ID_COLUMN);
+                long cAccountId = mProviderCursor.getLong(ACTIVE_ACCOUNT_ID_COLUMN);
                 
                 if (cAccountId == accountId)
                     break;
@@ -395,7 +376,7 @@ public class AccountListActivity extends SherlockListActivity implements View.On
             showExistingAccountListDialog();
             return true;
         case R.id.menu_create_account:
-            showSetupAccountForm(helper.getProviderNames().get(0), null, null, true);
+            showSetupAccountForm(helper.getProviderNames().get(0), null, null, true, null,false);
             return true;
         case R.id.menu_settings:
             Intent sintent = new Intent(this, SettingActivity.class);
@@ -422,6 +403,13 @@ public class AccountListActivity extends SherlockListActivity implements View.On
         boolean doKeyStoreImport = OtrAndroidKeyManagerImpl.checkForKeyImport(getIntent(), this);
 
     }
+    
+    private void exportKeyStore ()
+    {
+        //boolean doKeyStoreExport = OtrAndroidKeyManagerImpl.getInstance(this).doKeyStoreExport(password);
+
+    }
+    
     private void showExistingAccountListDialog() {
       
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -446,10 +434,16 @@ public class AccountListActivity extends SherlockListActivity implements View.On
                 {           
                     showGoogleAccountListDialog();
                 }
-                else
+                else if (pos == 1) //xmpp
                 {
                     //otherwise support the actual plugin-type
-                    showSetupAccountForm(mAccountList[pos],null, null, false);
+                    showSetupAccountForm(mAccountList[pos],null, null, false,mAccountList[pos],false);
+                }
+                else if (pos == 2) //zeroconf
+                {
+                    String username = "";
+                    String passwordPlaceholder = "password";//zeroconf doesn't need a password
+                    showSetupAccountForm(mAccountList[pos],username,passwordPlaceholder, false,mAccountList[pos],true);
                 }
             }
         });
@@ -499,7 +493,7 @@ private Handler mHandlerGoogleAuth = new Handler ()
                            String password = GTalkOAuth2.NAME + ':' + GTalkOAuth2.getGoogleAuthTokenAllow(mNewUser, getApplicationContext(), AccountListActivity.this,mHandlerGoogleAuth);
                    
                            //use the XMPP type plugin for google accounts, and the .NAME "X-GOOGLE-TOKEN" as the password
-                            showSetupAccountForm(helper.getProviderNames().get(0), mNewUser,password, false);
+                            showSetupAccountForm(helper.getProviderNames().get(0), mNewUser,password, false, getString(R.string.google_account),false);
                         }
                     };
                     thread.start();
@@ -511,10 +505,10 @@ private Handler mHandlerGoogleAuth = new Handler ()
 
     }
     
-    public void showSetupAccountForm (String providerType, String username, String token, boolean createAccount)
+    public void showSetupAccountForm (String providerType, String username, String token, boolean createAccount, String formTitle, boolean hideTor)
     {
         long providerId = helper.createAdditionalProvider(providerType);//xmpp
-        ((ImApp)getApplication()).resetProviderSettings(); //clear cached provider list
+        mApp.resetProviderSettings(); //clear cached provider list
         
         Intent intent = new Intent();
         intent.setAction(Intent.ACTION_INSERT);
@@ -527,6 +521,11 @@ private Handler mHandlerGoogleAuth = new Handler ()
         
         if (token != null)
             intent.putExtra("newpass", token);
+        
+        if (formTitle != null)
+            intent.putExtra("title", formTitle);
+        
+        intent.putExtra("hideTor", hideTor);
         
         intent.putExtra("register", createAccount);
         
@@ -762,100 +761,66 @@ private Handler mHandlerGoogleAuth = new Handler ()
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         
-        if (requestCode == SCAN_REQUEST_CODE)
+        if (requestCode == IntentIntegrator.REQUEST_CODE)
         {
-            try
-            {
-                boolean success = OtrAndroidKeyManagerImpl.getInstance(this).handleKeyScanResult(requestCode, resultCode, data, this, null);
+            
+          Object keyMan = null;
+          boolean keyStoreImported = false;
+            
+            try {
+         
+                keyStoreImported = OtrAndroidKeyManagerImpl.handleKeyScanResult(requestCode, resultCode, data, this);
                 
-                if (success)
-                {
-                    Toast.makeText(this, R.string.successfully_imported_otr_keyring, Toast.LENGTH_SHORT).show();
-                }
-                else
-                {
-                    Toast.makeText(this, R.string.otr_keyring_not_imported_please_check_the_file_exists_in_the_proper_format_and_location, Toast.LENGTH_SHORT).show();
-        
-                }
+            } catch (Exception e) {
+                OtrDebugLogger.log("error importing keystore",e);
             }
-            catch (IOException ioe)
+            
+            if (keyStoreImported)
+            {
+                Toast.makeText(this, R.string.successfully_imported_otr_keyring, Toast.LENGTH_SHORT).show();
+            }
+            else
             {
                 Toast.makeText(this, R.string.otr_keyring_not_imported_please_check_the_file_exists_in_the_proper_format_and_location, Toast.LENGTH_SHORT).show();
-
-                LogCleaner.error(ImApp.LOG_TAG, "problem importing key",ioe);
+    
             }
+            
         }
     }
 
 
-    @Override
-    public void onCacheWordUninitialized() {
-       // this will never happen
-    }
-
-
-    @Override
-    public void onCacheWordLocked() {
+    public void onDBLocked() {
      
         Intent intent = new Intent(getApplicationContext(), WelcomeActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         startActivity(intent);
     }
 
-
-
-    @Override
-    public void onCacheWordOpened() {
-       
-
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-
-        int defaultTimeout = Integer.parseInt(prefs.getString("pref_cacheword_timeout",ImApp.DEFAULT_TIMEOUT_CACHEWORD));
-        
-        mCacheWord.setTimeoutMinutes(defaultTimeout);  
-        
-        
-        String pkey = SQLCipherOpenHelper.encodeRawKey(mCacheWord.getEncryptionKey());
-
-            
-        initProviderCursor (pkey);
-        
-    }
-    
-    
-    private void initProviderCursor (String pkey)
+    private boolean initProviderCursor()
     {
         Uri uri = Imps.Provider.CONTENT_URI_WITH_ACCOUNT;
 
-        uri = uri.buildUpon().appendQueryParameter(ImApp.CACHEWORD_PASSWORD_KEY, pkey).build();
-      
         mProviderCursor = managedQuery(uri, PROVIDER_PROJECTION,
                 Imps.Provider.CATEGORY + "=?" + " AND " + Imps.Provider.ACTIVE_ACCOUNT_USERNAME + " NOT NULL" /* selection */,
                 new String[] { ImApp.IMPS_CATEGORY } /* selection args */,
                 Imps.Provider.DEFAULT_SORT_ORDER);
+        if (mProviderCursor == null)
+            return false;
         
         mAdapter = new ProviderAdapter(this, mProviderCursor, true);
         setListAdapter(mAdapter);
         
         refreshAccountState();
+        return true;
     }
     
     private void checkForCrashes() {
         CrashManager.register(this, ImApp.HOCKEY_APP_ID);
-      }
+    }
 
-      private void checkForUpdates() {
+    private void checkForUpdates() {
         // Remove this for store builds!
         UpdateManager.register(this, ImApp.HOCKEY_APP_ID);
-      }
-      
-      @Override
-      public void onShowcaseViewHide(ShowcaseView showcaseView) {
-       
-      }
+    }
 
-      @Override
-      public void onShowcaseViewShow(ShowcaseView showcaseView) {
-         
-      }
 }

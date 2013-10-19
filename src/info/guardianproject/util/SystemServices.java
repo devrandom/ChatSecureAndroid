@@ -15,7 +15,9 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.net.Uri;
+import android.provider.MediaStore;
 
 /**
  * 
@@ -38,7 +40,7 @@ public class SystemServices {
         public static void send(Context aContext, Uri aUri, Class<Activity> aTargetActivityClass) {
             NotificationManager mNotificationManager = (NotificationManager)aContext.getSystemService(Context.NOTIFICATION_SERVICE);
 
-            int icon = R.drawable.ic_stat_status;
+            int icon = R.drawable.ic_action_message;
             CharSequence tickerText = "Secured download completed!"; // TODO string
             long when = System.currentTimeMillis();
 
@@ -75,6 +77,13 @@ public class SystemServices {
             intent.setDataAndType(aUri, aMime);
             aContext.startActivity(intent);
         }
+
+        public static Intent getViewIntent(Uri uri, String type) {
+            Intent intent = new Intent();
+            intent.setAction(Intent.ACTION_VIEW);
+            intent.setDataAndType(uri, type);
+            return intent;
+        }
     }
 
     public static String sanitize(String path) {
@@ -83,5 +92,40 @@ public class SystemServices {
         } catch (UnsupportedEncodingException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public static class FileInfo {
+        public String path;
+        public String type;
+    };
+    
+    public static FileInfo getFileInfoFromURI(Context aContext, Uri uri) throws IllegalArgumentException {
+        FileInfo info = new FileInfo();
+        if (uri.getScheme().equals("file")) {
+            info.path = uri.getPath();
+            return info;
+        }
+        
+        if (uri.toString().startsWith("content://org.openintents.filemanager/")) {
+            // Work around URI escaping brokenness
+            info.path = uri.toString().replaceFirst("content://org.openintents.filemanager", "");
+            return info;
+        }
+        
+        Cursor cursor = aContext.getContentResolver().query(uri, null, null, null, null);
+        cursor.moveToFirst();
+        
+        int dataIdx = cursor.getColumnIndex(MediaStore.Images.Media.DATA);
+        
+        if (dataIdx != -1)
+        {
+            info.path = cursor.getString(dataIdx);
+            info.type = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.MIME_TYPE));
+        
+        
+            return info;
+        }
+        else
+            return null;
     }
 }

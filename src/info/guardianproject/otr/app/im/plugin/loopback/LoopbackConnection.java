@@ -23,6 +23,7 @@ import java.util.Map;
 
 import android.content.ContentResolver;
 import android.os.Parcel;
+import android.os.Parcelable;
 
 public class LoopbackConnection extends ImConnection {
 
@@ -246,13 +247,18 @@ public class LoopbackConnection extends ImConnection {
         }
 
         @Override
+        public String getBareAddress() {
+            return address;
+        }
+        
+        @Override
         public String getAddress() {
-            return name;
+            return address;
         }
 
         @Override
-        public String getScreenName() {
-            return address;
+        public String getUser() {
+            return name;
         }
         
         @Override
@@ -273,6 +279,7 @@ public class LoopbackConnection extends ImConnection {
             dest.writeString(address);
             dest.writeString(resource);
         }
+
 
     }
 

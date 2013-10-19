@@ -20,7 +20,7 @@ package info.guardianproject.otr.app.im.service;
 import info.guardianproject.otr.IOtrKeyManager;
 import info.guardianproject.otr.OtrAndroidKeyManagerImpl;
 import info.guardianproject.otr.OtrChatManager;
-import info.guardianproject.otr.OtrKeyManagerAdapter;
+import info.guardianproject.otr.OtrDebugLogger;
 import info.guardianproject.otr.app.im.IConnectionCreationListener;
 import info.guardianproject.otr.app.im.IImConnection;
 import info.guardianproject.otr.app.im.IRemoteImService;
@@ -45,6 +45,7 @@ import info.guardianproject.otr.dataplug.Api;
 import info.guardianproject.util.Debug;
 import info.guardianproject.util.LogCleaner;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -144,10 +145,10 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
                 }
                 else
                 {
-                    debug("OtrKeyManager NOT INIT'd; is key null?");
+                    throw new RuntimeException("could not instantiate OTR manager");
                 }
             } catch (Exception e) {
-                debug("can't get otr manager", e);
+                throw new RuntimeException(e);
             }
         } else {
             mOtrChatManager.setPolicy(otrPolicy);
@@ -242,6 +243,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
         @SuppressWarnings("finally")
         @Override
         public long sendHeartbeat() {
+            Debug.onHeartbeat();
             try {
                 if (mNeedCheckAutoLogin
                     && mNetworkConnectivityListener.getState() != State.NOT_CONNECTED) {
@@ -384,7 +386,11 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
 
 
     private void autoLogin() {
-        
+        // Try empty passphrase.  We can't autologin if this fails.
+        if (!Imps.setEmptyPassphrase(this, true)) {
+            debug("Cannot autologin with non-empty passphrase");
+            return;
+        }
         
         if (!mConnections.isEmpty()) {
             // This can happen because the UI process may be restarted and may think that we need
@@ -486,6 +492,8 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
         if (mGlobalSettings != null)
             mGlobalSettings.close();
      
+        Imps.clearPassphrase(this);
+        
         /*
         if (mKillProcessOnStop)
         {
@@ -562,7 +570,10 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
     }
 
     void removeConnection(ImConnectionAdapter connection) {
-        mOtrChatManager.removeConnection(connection);
+        
+        if (mOtrChatManager != null)
+            mOtrChatManager.removeConnection(connection);
+        
         mConnections.remove(connection);
     }
 
@@ -686,11 +697,21 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
             OtrAndroidKeyManagerImpl.setKeyStorePassword(password);
             return true;
         }
-
+        
         @Override
-        public IOtrKeyManager getOtrKeyManager(String accountId) throws RemoteException {
-            return new OtrKeyManagerAdapter(mOtrChatManager, null, accountId);
+        public IOtrKeyManager getOtrKeyManager ()
+        {
+            try {
+                return OtrAndroidKeyManagerImpl.getInstance(RemoteImService.this);
+            } catch (IOException e) {
+                
+                OtrDebugLogger.log("unable to get keymanager instance", e);
+
+                return null;
+            }
+            
         }
+        
         
         @Override
         public void setKillProcessOnStop (boolean killProcessOnStop)

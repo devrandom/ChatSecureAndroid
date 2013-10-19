@@ -17,8 +17,6 @@
 
 package info.guardianproject.otr.app.im.app;
 
-import info.guardianproject.cacheword.CacheWordActivityHandler;
-import info.guardianproject.cacheword.SQLCipherOpenHelper;
 import info.guardianproject.otr.app.Broadcaster;
 import info.guardianproject.otr.app.im.IChatSession;
 import info.guardianproject.otr.app.im.IChatSessionManager;
@@ -35,7 +33,7 @@ import info.guardianproject.otr.app.im.plugin.ImPluginInfo;
 import info.guardianproject.otr.app.im.provider.Imps;
 import info.guardianproject.otr.app.im.service.ImServiceConstants;
 import info.guardianproject.util.AssetUtil;
-import info.guardianproject.util.LogCleaner;
+import info.guardianproject.util.Debug;
 import info.guardianproject.util.PRNGFixes;
 
 import java.util.ArrayList;
@@ -86,14 +84,22 @@ public class ImApp extends Application {
     public static final String IMPS_CATEGORY = "info.guardianproject.otr.app.im.IMPS_CATEGORY";
     public static final String ACTION_QUIT = "info.guardianproject.otr.app.im.QUIT";
 
-    public static final int DEFAULT_AVATAR_WIDTH = 64;
-    public static final int DEFAULT_AVATAR_HEIGHT = 64;
+    public static final int DEFAULT_AVATAR_WIDTH = 120;
+    public static final int DEFAULT_AVATAR_HEIGHT = 120;
 
     public static final String HOCKEY_APP_ID = "2fa3b9252319e47367f1f125bb3adcd1";
 
     public static final String DEFAULT_TIMEOUT_CACHEWORD = "-1"; //one day
     
     public static final String CACHEWORD_PASSWORD_KEY = "pkey";
+    public static final String CLEAR_PASSWORD_KEY = "clear_key";
+
+    public static final String NO_CREATE_KEY = "nocreate";
+    
+    //ACCOUNT SETTINGS Imps defaults
+    public static final String DEFAULT_XMPP_RESOURCE = "ChatSecure";
+    public static final int DEFAULT_XMPP_PRIORITY = 20;
+    public static final String DEFAULT_XMPP_OTR_MODE = "auto";
     
     private Locale locale = null;
 
@@ -206,6 +212,13 @@ public class ImApp extends Application {
         sImApp = this;
     }
 
+    public ImApp(Context context) {
+        super();
+        mConnections = new HashMap<Long, IImConnection>();
+        mApplicationContext = context;
+        sImApp = this;
+    }
+
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
@@ -224,6 +237,7 @@ public class ImApp extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        Debug.onAppStart();
         
         PRNGFixes.apply(); //Google's fix for SecureRandom bug: http://android-developers.blogspot.com/2013/08/some-securerandom-thoughts.html
         
@@ -236,10 +250,9 @@ public class ImApp extends Application {
     
     public void setAppTheme (Activity activity)
     {
-        /*
-        
         SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
-        //int themeId = settings.getInt("theme", R.style.Theme_Gibberbot_Light);
+        
+        
         boolean themeDark = settings.getBoolean("themeDark", false);
         
         if (themeDark)
@@ -251,16 +264,16 @@ public class ImApp extends Application {
         }
         else
         {
-            setTheme(R.style.Theme_Chatsecure);
+            setTheme(R.style.Theme_Sherlock_Light);
             
             
             if (activity != null)
-                activity.setTheme(R.style.Theme_Chatsecure);
+                activity.setTheme(R.style.Theme_Sherlock_Light);
         }
         
         Configuration config = getResources().getConfiguration();
         getResources().updateConfiguration(config, getResources().getDisplayMetrics());
-        */
+     
         
     }
     
@@ -347,23 +360,25 @@ public class ImApp extends Application {
         startImServiceIfNeed(false);
     }
 
-    public synchronized void startImServiceIfNeed(boolean auto) {
+    public synchronized void startImServiceIfNeed(boolean isBoot) {
         if (Log.isLoggable(LOG_TAG, Log.DEBUG))
             log("start ImService");
-
+        
         Intent serviceIntent = new Intent();
         serviceIntent.setComponent(ImServiceConstants.IM_SERVICE_COMPONENT);
-        serviceIntent.putExtra(ImServiceConstants.EXTRA_CHECK_AUTO_LOGIN, auto);
+        serviceIntent.putExtra(ImServiceConstants.EXTRA_CHECK_AUTO_LOGIN, isBoot);
         
         if (mImService == null)
         {
             mApplicationContext.startService(serviceIntent);
-         
-            mConnectionListener = new MyConnListener(new Handler());
+            if (!isBoot) {
+                mConnectionListener = new MyConnListener(new Handler());
+            }
         }
         
-        mApplicationContext
-          .bindService(serviceIntent, mImServiceConn, Context.BIND_AUTO_CREATE);
+        if (mImServiceConn != null && !isBoot)
+            mApplicationContext
+                .bindService(serviceIntent, mImServiceConn, Context.BIND_AUTO_CREATE);
 
                    
     }
@@ -414,29 +429,6 @@ public class ImApp extends Application {
         }
     }
     
-  
-    private CacheWordActivityHandler mCacheWord;
-
-    public void setCacheWord ( CacheWordActivityHandler cacheWord)
-    {
-        mCacheWord = cacheWord;
-    }
-    
-    public void initOtrStoreKey ()
-    {
-        if ( getRemoteImService() != null)
-        {
-            String pkey = SQLCipherOpenHelper.encodeRawKey(mCacheWord.getEncryptionKey());
-    
-            try {
-               getRemoteImService().unlockOtrStore(pkey);
-             } catch (RemoteException e) {
-               
-                 LogCleaner.error(ImApp.LOG_TAG, "eror initializing otr key", e);
-             }
-        }
-    }
-
     private ServiceConnection mImServiceConn = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder service) {
             if (Log.isLoggable(LOG_TAG, Log.DEBUG))
@@ -445,9 +437,6 @@ public class ImApp extends Application {
             mImService = IRemoteImService.Stub.asInterface(service);
             fetchActiveConnections();
             
-            if (mCacheWord != null && mCacheWord.getEncryptionKey() != null)
-                initOtrStoreKey();
-
             synchronized (mQueue) {
                 for (Message msg : mQueue) {
                     msg.sendToTarget();
@@ -692,10 +681,12 @@ public class ImApp extends Application {
     }
 
     public IImConnection createConnection(long providerId, long accountId) throws RemoteException {
+        
         if (mImService == null) {
             // Service hasn't been connected or has died.
             return null;
         }
+        
         IImConnection conn = getConnection(providerId);
         if (conn == null) {
             conn = mImService.createConnection(providerId, accountId);
@@ -708,7 +699,6 @@ public class ImApp extends Application {
             
             if (mConnections.size() == 0)
                 fetchActiveConnections();
-        
             
             return mConnections.get(providerId);
         }
@@ -731,6 +721,10 @@ public class ImApp extends Application {
 
     public List<IImConnection> getActiveConnections() {
         synchronized (mConnections) {
+
+            if (mConnections.size() == 0)
+                fetchActiveConnections();
+            
             ArrayList<IImConnection> result = new ArrayList<IImConnection>();
             result.addAll(mConnections.values());
             return result;
@@ -916,7 +910,7 @@ public class ImApp extends Application {
                         mConnections.remove(providerId);
                     }
                     // stop the service if there isn't an active connection anymore.
-                    stopImServiceIfInactive();
+                  //  stopImServiceIfInactive();
                     break;
 
                 case ImConnection.SUSPENDED:
@@ -984,6 +978,12 @@ public class ImApp extends Application {
         }
 
         return null;
+    }
+
+    public void maybeInit(Activity activity) {
+        startImServiceIfNeed();
+        setAppTheme(activity);
+        ImPluginHelper.getInstance(this).loadAvailablePlugins();
     }
 
    

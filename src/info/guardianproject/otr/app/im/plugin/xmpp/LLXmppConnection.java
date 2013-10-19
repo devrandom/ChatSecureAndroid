@@ -1,5 +1,6 @@
 package info.guardianproject.otr.app.im.plugin.xmpp;
 
+import info.guardianproject.otr.app.im.engine.Address;
 import info.guardianproject.otr.app.im.engine.ChatGroupManager;
 import info.guardianproject.otr.app.im.engine.ChatSession;
 import info.guardianproject.otr.app.im.engine.ChatSessionManager;
@@ -13,6 +14,7 @@ import info.guardianproject.otr.app.im.engine.ImException;
 import info.guardianproject.otr.app.im.engine.Message;
 import info.guardianproject.otr.app.im.engine.Presence;
 import info.guardianproject.otr.app.im.provider.Imps;
+import info.guardianproject.util.LogCleaner;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -59,7 +61,7 @@ public class LLXmppConnection extends ImConnection implements CallbackHandler {
 
     final static String TAG = "Gibberbot.LLXmppConnection";
 
-    private XmppContactList mContactListManager;
+    private XmppContactListManager mContactListManager;
     private Contact mUser;
 
     private XmppChatSessionManager mSessionManager;
@@ -79,7 +81,8 @@ public class LLXmppConnection extends ImConnection implements CallbackHandler {
 
     private InetAddress ipAddress;
 
-    private String serviceName;
+    private String mServiceName;
+    private String mResource;
 
     static {
         LLServiceDiscoveryManager.addServiceListener();
@@ -96,8 +99,11 @@ public class LLXmppConnection extends ImConnection implements CallbackHandler {
 
         DeliveryReceipts.addExtensionProviders();
 
-        LLServiceDiscoveryManager.setIdentityName("Gibberbot");
-        LLServiceDiscoveryManager.setIdentityType("phone");
+        String identityResource = "ChatSecure";
+        String identityType = "phone";
+        
+        LLServiceDiscoveryManager.setIdentityName(identityResource);
+        LLServiceDiscoveryManager.setIdentityType(identityType);
     }
 
     private void createExecutor() {
@@ -135,7 +141,7 @@ public class LLXmppConnection extends ImConnection implements CallbackHandler {
             public void run() {
                 LLChat chat;
                 try {
-                    chat = mService.getChat(message.getTo());
+                    chat = mService.getChat(Address.stripResource(message.getTo()));
                     chat.sendMessage(message);
                 } catch (XMPPException e) {
                     Log.e(TAG, "Could not send message", e);
@@ -160,6 +166,7 @@ public class LLXmppConnection extends ImConnection implements CallbackHandler {
         }
         mService.getLocalPresence().setStatus(mode);
         mService.getLocalPresence().setMsg(statusText);
+        
         try {
             mService.updatePresence(mService.getLocalPresence());
         } catch (XMPPException e) {
@@ -190,10 +197,10 @@ public class LLXmppConnection extends ImConnection implements CallbackHandler {
     }
 
     @Override
-    public synchronized XmppContactList getContactListManager() {
+    public synchronized XmppContactListManager getContactListManager() {
 
         if (mContactListManager == null)
-            mContactListManager = new XmppContactList();
+            mContactListManager = new XmppContactListManager();
 
         return mContactListManager;
     }
@@ -233,8 +240,10 @@ public class LLXmppConnection extends ImConnection implements CallbackHandler {
         // providerSettings is closed in initConnection()
         String userName = Imps.Account.getUserName(contentResolver, mAccountId);
         String domain = providerSettings.getDomain();
+        mResource = providerSettings.getXmppResource();
+        
         providerSettings.close(); // close this, which was opened in do_login()
-
+        
         try {
             initConnection(userName, domain);
         } catch (Exception e) {
@@ -251,22 +260,26 @@ public class LLXmppConnection extends ImConnection implements CallbackHandler {
 
     // Runs in executor thread
     private void initConnection(String userName, String domain) throws Exception {
+
         setState(LOGGING_IN, null);
-        mUserPresence = new Presence(Presence.AVAILABLE, "", null, null,
-                Presence.CLIENT_TYPE_DEFAULT);
-
-        domain = domain.replace('.', '_');
-        serviceName = userName + "@" + domain;
-        LLPresence presence = new LLPresence(serviceName);
-
-        ipAddress = getMyAddress(serviceName, true);
-
+        
+        mServiceName = userName + '@' + domain;// + '/' + mResource;
+        
+        ipAddress = getMyAddress(mServiceName, true);
         if (ipAddress == null) {
             ImErrorInfo info = new ImErrorInfo(ImErrorInfo.WIFI_NOT_CONNECTED_ERROR,
                     "network connection is required");
             setState(DISCONNECTED, info);
             return;
         }
+        
+        mUserPresence = new Presence(Presence.AVAILABLE, "", null, null,
+                Presence.CLIENT_TYPE_MOBILE);
+                
+        LLPresence presence = new LLPresence(mServiceName);
+        presence.setNick(userName);
+        presence.setJID(mServiceName);
+        presence.setServiceName(mServiceName);
 
         mService = JmDNSService.create(presence, ipAddress);
         mService.addServiceStateListener(new LLServiceStateListener() {
@@ -339,6 +352,8 @@ public class LLXmppConnection extends ImConnection implements CallbackHandler {
                         rec.setTo(mUser.getAddress());
                         rec.setFrom(session.getParticipant().getAddress());
                         rec.setDateTime(new Date());
+
+                        rec.setType(Imps.MessageType.INCOMING);
                         session.onReceiveMessage(rec);
 
                         if (message.getExtension("request", DeliveryReceipts.NAMESPACE) != null) {
@@ -356,8 +371,7 @@ public class LLXmppConnection extends ImConnection implements CallbackHandler {
             }
         });
 
-        String xmppName = userName + '@' + domain;
-        mUser = new Contact(new XmppAddress(userName, xmppName), xmppName);
+        mUser = new Contact(new XmppAddress(mServiceName), userName);
 
         // Initiate Link-local message session
         mService.init();
@@ -480,7 +494,7 @@ public class LLXmppConnection extends ImConnection implements CallbackHandler {
     }
 
     // Force immediate logout
-    public synchronized void logout() {
+    public void logout() {
         if (mService != null) {
             mService.close();
             mService = null;
@@ -523,7 +537,7 @@ public class LLXmppConnection extends ImConnection implements CallbackHandler {
     }
 
     private static Contact makeContact(String name, String address) {
-        Contact contact = new Contact(new XmppAddress(name, address), address);
+        Contact contact = new Contact(new XmppAddress(address), name);
 
         return contact;
     }
@@ -558,13 +572,22 @@ public class LLXmppConnection extends ImConnection implements CallbackHandler {
         return mSessionManager.createChatSession(contact);
     }
 
-    public class XmppContactList extends ContactListManager {
+    public class XmppContactListManager extends ContactListManager {
+        
+        public XmppContactListManager ()
+        {
+            super();
+
+        }
+        
+        
         private void do_loadContactLists() {
             String generalGroupName = "Buddies";
 
             Collection<Contact> contacts = new ArrayList<Contact>();
             ContactList cl = new ContactList(mUser.getAddress(), generalGroupName, true, contacts,
                     this);
+            
             notifyContactListCreated(cl);
             notifyContactListsLoaded();
         }
@@ -581,7 +604,7 @@ public class LLXmppConnection extends ImConnection implements CallbackHandler {
 
         @Override
         public String normalizeAddress(String address) {
-            return address;
+            return new XmppAddress(address).getBareAddress();
         }
 
         @Override
@@ -597,39 +620,53 @@ public class LLXmppConnection extends ImConnection implements CallbackHandler {
         }
 
         private void handlePresenceChanged(LLPresence presence, boolean offline) {
+          
+            
+            if (presence.getServiceName().equals(mServiceName))
+                return; //this is from us!
+
+            
             // Create default lists on first presence received
-            if (mContactListManager.getState() != ContactListManager.LISTS_LOADED) {
-                do_loadContactLists();
+            if (getState() != ContactListManager.LISTS_LOADED) {
+                loadContactListsAsync();
             }
 
-            String name = presence.getFirstName();
-            String address = presence.getServiceName();
+            
+            String name = presence.getNick();
+            String address = presence.getJID();
+            
+            if (address == null) //sometimes with zeroconf/bonjour there may not be a JID
+                address = presence.getServiceName();
 
-            mContactListManager.doAddContact(name, address);
+            XmppAddress xaddress = new XmppAddress(address);
 
-            XmppAddress xaddress = new XmppAddress(name, address);
+            if (name == null)
+                name = xaddress.getUser();
 
-            Contact contact = getContact(xaddress.getAddress());
+            Contact contact = findOrCreateContact(name,xaddress.getAddress());
 
-            int type = parsePresence(presence, offline);
+            try {
+                
+               
+                if (!mContactListManager.getDefaultContactList().containsContact(contact))
+                {                                        
+                    mContactListManager.getDefaultContactList().addExistingContact(contact);
+                    notifyContactListUpdated(mContactListManager.getDefaultContactList(), ContactListListener.LIST_CONTACT_ADDED, contact);
+                }
+                
+            } catch (ImException e) {
+                LogCleaner.error(TAG, "unable to add contact to list", e);
+             }
 
-            if (contact == null) {
-                contact = new Contact(xaddress, name);
+            Presence p = new Presence(parsePresence(presence, offline), presence.getMsg(), null, null,
+                    Presence.CLIENT_TYPE_DEFAULT);
+            
+            contact.setPresence(p);
 
-                debug(TAG, "got presence updated for NEW user: "
-                           + contact.getAddress().getAddress() + " presence:" + type);
-            } else {
-                debug(TAG, "Got present update for EXISTING user: "
-                           + contact.getAddress().getAddress() + " presence:" + type);
+            Contact[] contacts = new Contact[] { contact };
 
-                Presence p = new Presence(type, presence.getMsg(), null, null,
-                        Presence.CLIENT_TYPE_DEFAULT);
-                contact.setPresence(p);
-
-                Contact[] contacts = new Contact[] { contact };
-
-                notifyContactsPresenceUpdated(contacts);
-            }
+            notifyContactsPresenceUpdated(contacts);
+            
         }
 
         @Override
@@ -712,7 +749,7 @@ public class LLXmppConnection extends ImConnection implements CallbackHandler {
     }
 
     public static void debug(String tag, String msg) {
-        Log.d(tag, msg);
+        LogCleaner.debug(tag, msg);
     }
 
     @Override
@@ -735,7 +772,7 @@ public class LLXmppConnection extends ImConnection implements CallbackHandler {
 
     @Override
     public void sendHeartbeat(long heartbeatInterval) {
-        InetAddress newAddress = getMyAddress(serviceName, false);
+        InetAddress newAddress = getMyAddress(mServiceName, false);
         if (!ipAddress.equals(newAddress)) {
             debug(TAG, "new address, reconnect");
             execute(new Runnable() {

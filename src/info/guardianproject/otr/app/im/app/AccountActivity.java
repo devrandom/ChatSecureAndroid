@@ -16,7 +16,7 @@
 package info.guardianproject.otr.app.im.app;
 
 import info.guardianproject.onionkit.ui.OrbotHelper;
-import info.guardianproject.otr.IOtrKeyManager;
+import info.guardianproject.otr.IOtrChatSession;
 import info.guardianproject.otr.app.im.IImConnection;
 import info.guardianproject.otr.app.im.R;
 import info.guardianproject.otr.app.im.engine.ImConnection;
@@ -29,8 +29,8 @@ import info.guardianproject.otr.app.im.provider.Imps.AccountStatusColumns;
 import info.guardianproject.otr.app.im.provider.Imps.CommonPresenceColumns;
 import info.guardianproject.otr.app.im.service.ImServiceConstants;
 import info.guardianproject.util.LogCleaner;
-import android.app.AlertDialog;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.ContentUris;
@@ -52,6 +52,9 @@ import android.text.TextWatcher;
 import android.text.util.Linkify;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -62,10 +65,6 @@ import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 
 public class AccountActivity extends Activity {
 
@@ -117,7 +116,7 @@ public class AccountActivity extends Activity {
 
     private final static int DEFAULT_PORT = 5222;
 
-    IOtrKeyManager otrKeyManager;
+    IOtrChatSession mOtrChatSession;
     private SignInHelper mSignInHelper;
 
     private boolean mIsNewAccount = false;
@@ -132,7 +131,7 @@ public class AccountActivity extends Activity {
         mIsNewAccount = getIntent().getBooleanExtra("register", false);
         
         mSignInHelper = new SignInHelper(this);
-        SignInHelper.Listener signInListener = new SignInHelper.Listener() {
+        SignInHelper.SignInListener signInListener = new SignInHelper.SignInListener() {
             public void connectedToService() {
             }
             public void stateChanged(int state, long accountId) {
@@ -206,10 +205,39 @@ public class AccountActivity extends Activity {
             }
         }
 
-        if (Intent.ACTION_INSERT.equals(action)) {
+        if (Intent.ACTION_INSERT.equals(action) && uri.getScheme().equals("ima")) {
+            ImPluginHelper helper = ImPluginHelper.getInstance(this);
+            String authority = uri.getAuthority();
+            String[] userpass_host = authority.split("@");
+            String[] user_pass = userpass_host[0].split(":");
+            mUserName = user_pass[0];
+            String pass = user_pass[1];
+            mDomain = userpass_host[1];
+            mPort = 0;
+            Cursor cursor = openAccountByUsernameAndDomain(cr);
+            boolean exists = cursor.moveToFirst();
+            long accountId;
+            if (exists) {
+                accountId = cursor.getLong(0);
+                mAccountUri = ContentUris.withAppendedId(Imps.Account.CONTENT_URI, accountId);
+                pass = cursor.getString(ACCOUNT_PASSWORD_COLUMN);
+            } else {
+                mProviderId = helper.createAdditionalProvider(helper.getProviderNames().get(0)); //xmpp FIXME
+                accountId = ImApp.insertOrUpdateAccount(cr, mProviderId, mUserName, pass);
+                mAccountUri = ContentUris.withAppendedId(Imps.Account.CONTENT_URI, accountId);
+
+                createNewAccount(mUserName, pass);
+            }
+            cursor.close();
+            setAccountKeepSignedIn(true);
+            mSignInHelper.activateAccount(mProviderId, accountId);
+            mSignInHelper.signIn(pass, mProviderId, accountId, true);
+            setResult(RESULT_OK);
+            finish();
+        } else if (Intent.ACTION_INSERT.equals(action)) {
             mOriginalUserAccount = "";
             // TODO once we implement multiple IM protocols
-            mProviderId = ContentUris.parseId(i.getData());
+            mProviderId = ContentUris.parseId(uri);
             provider = mApp.getProvider(mProviderId);
 
             if (provider != null)
@@ -254,19 +282,18 @@ public class AccountActivity extends Activity {
             Imps.ProviderSettings.QueryMap settings = new Imps.ProviderSettings.QueryMap(
                     cr, mProviderId, false /* don't keep updated */, null /* no handler */);
 
-            mOriginalUserAccount = cursor.getString(ACCOUNT_USERNAME_COLUMN) + "@"
-                                   + settings.getDomain();
-            mEditUserAccount.setText(mOriginalUserAccount);
-            mEditPass.setText(cursor.getString(ACCOUNT_PASSWORD_COLUMN));
-
-            mRememberPass.setChecked(!cursor.isNull(ACCOUNT_PASSWORD_COLUMN));
-
-            mUseTor.setChecked(settings.getUseTor());
-            
-            mBtnDelete.setVisibility(View.VISIBLE);
-            
-            cursor.close();
-            settings.close();
+            try {
+                mOriginalUserAccount = cursor.getString(ACCOUNT_USERNAME_COLUMN) + "@"
+                                       + settings.getDomain();
+                mEditUserAccount.setText(mOriginalUserAccount);
+                mEditPass.setText(cursor.getString(ACCOUNT_PASSWORD_COLUMN));
+                mRememberPass.setChecked(!cursor.isNull(ACCOUNT_PASSWORD_COLUMN));
+                mUseTor.setChecked(settings.getUseTor());
+                mBtnDelete.setVisibility(View.VISIBLE);
+            } finally {
+                settings.close();
+                cursor.close();
+            }
 
 
         } else {
@@ -363,10 +390,9 @@ public class AccountActivity extends Activity {
                     if (pass.equals(passConf))
                     {
                         createNewAccount(mUserName, pass);
-                        ContentValues values = new ContentValues();
-                        values.put(AccountColumns.KEEP_SIGNED_IN, rememberPass ? 1 : 0);
-                        getContentResolver().update(mAccountUri, values, null, null);
+                        setAccountKeepSignedIn(rememberPass);
                         mSignInHelper.activateAccount(mProviderId, accountId);
+                        setResult(RESULT_OK);
                         //mSignInHelper.signIn(pass, mProviderId, accountId, isActive);
                         //isSignedIn = true;
                         //updateWidgetState();
@@ -383,9 +409,7 @@ public class AccountActivity extends Activity {
                         signOut();
                         isSignedIn = false;
                     } else {
-                        ContentValues values = new ContentValues();
-                        values.put(AccountColumns.KEEP_SIGNED_IN, rememberPass ? 1 : 0);
-                        getContentResolver().update(mAccountUri, values, null, null);
+                        setAccountKeepSignedIn(rememberPass);
                         
                         if (!mOriginalUserAccount.equals(mUserName + '@' + mDomain)
                             && shouldShowTermOfUse(brandingRes)) {
@@ -398,9 +422,12 @@ public class AccountActivity extends Activity {
                         } else {
                             mSignInHelper.signIn(pass, mProviderId, accountId, isActive);
                         }
+                      
                         isSignedIn = true;
                     }
                     updateWidgetState();
+                    setResult(RESULT_OK);
+                    finish();
                 }
                 
             }
@@ -415,6 +442,12 @@ public class AccountActivity extends Activity {
 
         updateWidgetState();
         
+        if (i.hasExtra("title"))
+        {
+            String title = i.getExtras().getString("title");
+            setTitle(title);
+        }
+        
         if (i.hasExtra("newuser"))
         {
             String newuser = i.getExtras().getString("newuser");
@@ -428,10 +461,27 @@ public class AccountActivity extends Activity {
         if (i.hasExtra("newpass"))
         {
             mEditPass.setText(i.getExtras().getString("newpass"));
+            mEditPass.setVisibility(View.GONE);
             mRememberPass.setChecked(true);
+            mRememberPass.setVisibility(View.GONE);
         }
 
+        if (i.getBooleanExtra("hideTor", false))
+        {
+            mUseTor.setVisibility(View.GONE);
+        }
 
+    }
+
+    private Cursor openAccountByUsernameAndDomain(ContentResolver cr) {
+        String clauses = Imps.Account.USERNAME + " = ? AND " + Imps.ProviderSettings.VALUE + " = ?";
+        String args[] = new String[2];
+        args[0] = mUserName;
+        args[1] = mDomain;
+
+        String[] projection = { Imps.Account._ID };
+        Cursor cursor = cr.query(Imps.Account.BY_DOMAIN_URI, projection, clauses, args, null);
+        return cursor;
     }
     
     @Override
@@ -458,24 +508,25 @@ public class AccountActivity extends Activity {
         Imps.ProviderSettings.QueryMap settings = new Imps.ProviderSettings.QueryMap(
                 getContentResolver(), mProviderId, false /* don't keep updated */, null /* no handler */);
 
-        if (useTor && (!orbotHelper.isOrbotInstalled()))
-        {
-            //Toast.makeText(this, "Orbot app is not installed. Please install from Google Play or from https://guardianproject.info/releases", Toast.LENGTH_LONG).show();
-            
-            orbotHelper.promptToInstall(this);
-            
-            mUseTor.setChecked(false);
-            settings.setUseTor(false);
-        }
-        else
-        {
-            settings.setUseTor(useTor);
-        }
+        try {
+            if (useTor && (!orbotHelper.isOrbotInstalled()))
+            {
+                //Toast.makeText(this, "Orbot app is not installed. Please install from Google Play or from https://guardianproject.info/releases", Toast.LENGTH_LONG).show();
                 
-        settingsForDomain(settings.getDomain(),settings.getPort());
-             
-        settings.close();
-      
+                orbotHelper.promptToInstall(this);
+                
+                mUseTor.setChecked(false);
+                settings.setUseTor(false);
+            }
+            else
+            {
+                settings.setUseTor(useTor);
+            }
+            
+            settingsForDomain(settings.getDomain(),settings.getPort());
+        } finally {
+            settings.close();
+        }
     }
 /*
     private void getOTRKeyInfo() {
@@ -526,7 +577,7 @@ public class AccountActivity extends Activity {
         boolean isGood = true;
         String[] splitAt = userField.trim().split("@");
         mUserName = splitAt[0];
-        mDomain = null;
+        mDomain = "";
         mPort = 0;
 
         if (splitAt.length > 1) {
@@ -548,12 +599,14 @@ public class AccountActivity extends Activity {
             }
         }
 
-        if (mDomain == null) {
-            isGood = false;
+        //its okay if domain is null;
+        
+//        if (mDomain == null) {
+  //          isGood = false;
             //Toast.makeText(AccountActivity.this, 
             //	R.string.account_wizard_no_domain_warning,
             //	Toast.LENGTH_LONG).show();
-        } 
+    //    } 
         /*//removing requirement of a . in the domain
         else if (mDomain.indexOf(".") == -1) { 
             isGood = false;
@@ -574,6 +627,14 @@ public class AccountActivity extends Activity {
         Imps.ProviderSettings.QueryMap settings = new Imps.ProviderSettings.QueryMap(
                 getContentResolver(), mProviderId, false /* don't keep updated */, null /* no handler */);
 
+        try {
+            settingsForDomain(domain, port, settings);
+        } finally {
+            settings.close();
+        }
+    }
+
+    private void settingsForDomain(String domain, int port, Imps.ProviderSettings.QueryMap settings) {
         if (domain.equals("gmail.com")) {
             // Google only supports a certain configuration for XMPP:
             // http://code.google.com/apis/talk/open_communications.html
@@ -659,7 +720,7 @@ public class AccountActivity extends Activity {
             settings.setAllowPlainAuth(false);
         }
         
-        
+        settings.requery();
     }
 
     void confirmTermsOfUse(BrandingResources res, DialogInterface.OnClickListener accept) {
@@ -895,8 +956,8 @@ public class AccountActivity extends Activity {
         public void run() {
 
             try {
-                if (otrKeyManager != null) {
-                    otrKeyManager.generateLocalKeyPair();
+                if (mOtrChatSession != null) {
+                    mOtrChatSession.generateLocalKeyPair();
 
                 } else {
                     Toast.makeText(AccountActivity.this, "OTR is not initialized yet",
@@ -918,8 +979,8 @@ public class AccountActivity extends Activity {
                 pbarDialog.dismiss();
 
                 try {
-                    if (otrKeyManager != null) {
-                        String lFingerprint = otrKeyManager.getLocalFingerprint();
+                    if (mOtrChatSession != null) {
+                        String lFingerprint = mOtrChatSession.getLocalFingerprint();
                         mTxtFingerprint.setText(processFingerprint(lFingerprint));
                     }
 
@@ -952,25 +1013,25 @@ public class AccountActivity extends Activity {
             
             @Override
             protected String doInBackground(String... params) {
+                Imps.ProviderSettings.QueryMap settings = new Imps.ProviderSettings.QueryMap(
+                        getContentResolver(), mProviderId, false /* don't keep updated */, null /* no handler */);
+
                 try {
                                         
-                    settingsForDomain(mDomain, mPort);
-                    
-                    Imps.ProviderSettings.QueryMap settings = new Imps.ProviderSettings.QueryMap(
-                            getContentResolver(), mProviderId, false /* don't keep updated */, null /* no handler */);
-
+                    settingsForDomain(mDomain, mPort, settings);
                     
                     XmppConnection xmppConn = new XmppConnection(AccountActivity.this);
                     xmppConn.registerAccount(settings, params[0], params[1]);
-                    
-                    settings.close();
-
+                    // settings closed in registerAccount
                 } catch (Exception e) {
-                   LogCleaner.error(ImApp.LOG_TAG, "error registering new account", e);
+                    LogCleaner.error(ImApp.LOG_TAG, "error registering new account", e);
                    
                     return e.getLocalizedMessage();
+                } finally {
                     
+                    settings.close();
                 }
+                
                 return null;
               }
 
@@ -982,6 +1043,10 @@ public class AccountActivity extends Activity {
                 {
                     Toast.makeText(AccountActivity.this, "error creating account: " + result, Toast.LENGTH_LONG).show();
                 }
+                else
+                {
+                    AccountActivity.this.finish();
+                }
                
             }
         }.execute(usernameNew, passwordNew);
@@ -990,4 +1055,9 @@ public class AccountActivity extends Activity {
     }
    
 
+    private void setAccountKeepSignedIn(final boolean rememberPass) {
+        ContentValues values = new ContentValues();
+        values.put(AccountColumns.KEEP_SIGNED_IN, rememberPass ? 1 : 0);
+        getContentResolver().update(mAccountUri, values, null, null);
+    }
 }

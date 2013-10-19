@@ -1,8 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="info.guardianproject.otr.app.im" 
     android:sharedUserLabel="@string/perm_label"
-     android:versionName="12.0.7"
-     android:versionCode="73"
+     android:versionName="12.6.4"
+     android:versionCode="89"
      android:installLocation="auto"     
      >     
     <supports-screens
@@ -21,6 +21,7 @@ android:anyDensity="true"
 	<uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />  
 	<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />  
        <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 
 	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -164,15 +165,14 @@ android:anyDensity="true"
              </intent-filter>
         </service>
 
-        <provider android:name=".provider.ImpsProvider"
-        	
+        <provider
+            android:name=".provider.ImpsProvider"
             android:authorities="info.guardianproject.otr.app.im.provider.Imps"
-            android:readPermission="info.guardianproject.otr.app.providers.imps.permission.READ_ONLY"
-            android:writePermission="info.guardianproject.otr.app.providers.imps.permission.WRITE_ONLY"
+            android:exported="false"
             android:grantUriPermissions="true"
-                          android:exported="false"
-            
-             />
+            android:process=":remote"
+            android:readPermission="info.guardianproject.otr.app.providers.imps.permission.READ_ONLY"
+            android:writePermission="info.guardianproject.otr.app.providers.imps.permission.WRITE_ONLY" />
 
         <activity android:name=".app.ChooseAccountActivity"
                           android:exported="false"
@@ -200,6 +200,25 @@ android:anyDensity="true"
                 <action android:name="android.intent.action.SENDTO" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:scheme="immu"/>
+                
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.INSERT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="ima"/>
+            </intent-filter>
+             <intent-filter>
+                <action android:name="android.intent.action.SENDTO" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="otr-in-band"/>
+            </intent-filter>
+             <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                 <category android:name="android.intent.category.ALTERNATIVE" /> 
+                 <category android:name="android.intent.category.SELECTED_ALTERNATIVE" /> 
+                 
+                 <data android:mimeType="*/*" />
                 
             </intent-filter>
         </activity>
@@ -273,7 +292,7 @@ android:anyDensity="true"
                 android:configChanges="orientation|keyboardHidden|screenSize"
                 android:windowSoftInputMode="stateUnchanged"
                android:exported="false"
-               android:launchMode="singleTop"
+               android:launchMode="singleTask"
                 >
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -317,7 +336,7 @@ android:anyDensity="true"
               android:uiOptions="splitActionBarWhenNarrow"
              android:configChanges="orientation|keyboardHidden|screenSize"
                           android:exported="false"                          
-            android:theme="@style/AppThemeDark"
+            android:theme="@android:style/Theme.Dialog"
             >
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

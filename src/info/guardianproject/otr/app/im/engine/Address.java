@@ -18,6 +18,7 @@
 package info.guardianproject.otr.app.im.engine;
 
 import android.os.Parcel;
+import android.os.Parcelable;
 
 /**
  * An abstract representation of the address to any addressable entities such as
@@ -37,7 +38,7 @@ public abstract class Address {
      * 
      * @return the screen name.
      */
-    public abstract String getScreenName();
+    public abstract String getUser();
 
     /**
      * Gets a resource value
@@ -45,6 +46,12 @@ public abstract class Address {
      * @return the resource name.
      */
     public abstract String getResource();
+    
+    /**
+     * Gets the bare address without any resource
+     * @return the bare address
+     */
+    public abstract String getBareAddress();
 
     
     public abstract void writeToParcel(Parcel dest);

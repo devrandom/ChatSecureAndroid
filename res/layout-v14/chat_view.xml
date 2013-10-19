@@ -23,7 +23,6 @@
     android:orientation="vertical"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-        android:background="@drawable/bgcolor2"
     
     >
 
@@ -68,6 +67,14 @@
         
     </LinearLayout>
 
+        <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#aaaaaa"
+        android:layout_margin="0dp"
+        android:padding="0dp"
+        android:orientation="horizontal"></LinearLayout>
+    
 
     <ListView android:id="@+id/history"
         android:layout_width="fill_parent"
@@ -144,7 +151,18 @@
                 android:text="@string/decline_subscription" />
         </LinearLayout>
     </LinearLayout>
+    
+    
 
+        <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#aaaaaa"
+        android:layout_margin="0dp"
+        android:padding="0dp"
+        android:orientation="horizontal"></LinearLayout>
+
+    
   <LinearLayout 
 	    android:layout_width="fill_parent"
 	    android:layout_height="wrap_content"
@@ -203,29 +221,56 @@
         android:src="@drawable/ic_send_holo_light" />
 
       </LinearLayout>
-      
-    <LinearLayout 
+   <LinearLayout 
 	    android:layout_width="fill_parent"
 	    android:layout_height="wrap_content"
 	    android:orientation="horizontal"
 	     android:layout_gravity="fill_vertical"
-	             android:gravity="bottom"
+	     android:gravity="center"
 	     android:visibility="gone"
 	     android:id="@+id/actionBox"
+	     android:background="#aaaaaa"
+	     
 	     >
      
-      <ImageButton
+      <ImageView
         android:id="@+id/btnProfile"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"        
         android:fontFamily="sans-serif-light"      
-        android:src="@drawable/ic_menu_info" />
-     <ImageButton
+        android:src="@drawable/avatar_unknown"
+        android:padding="8dip"
+        
+         />
+     <ImageView
+        android:id="@+id/btnSendFile"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"        
+        android:fontFamily="sans-serif-light"      
+        android:src="@drawable/content_new_attachment"
+        android:padding="8dip"
+        
+         />
+     <ImageView
+        android:id="@+id/btnSendPicture"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"        
+        android:fontFamily="sans-serif-light"      
+        android:src="@drawable/content_new_picture"
+        android:padding="8dip"
+        
+         />
+     
+     
+     <ImageView
         android:id="@+id/btnEndChat"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"        
         android:fontFamily="sans-serif-light"      
-        android:src="@drawable/ic_menu_close" />
+        android:src="@drawable/content_discard"
+        android:padding="8dip"
+        
+         />
      
       </LinearLayout>
    <android.support.v4.view.ViewPager
@@ -233,6 +278,7 @@
         android:layout_width="match_parent"
         android:layout_height="140dip"
         android:visibility="gone"
+        
        />
       
 </info.guardianproject.otr.app.im.app.ChatView>

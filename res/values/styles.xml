@@ -19,12 +19,8 @@
 
 <resources>
     
-    <style name="AppTheme" parent="Theme.Sherlock.Light" >
+    <style name="AppTheme" parent="Theme.Sherlock" >
     
-         <!--  FIXME <item name="messageBarContainerStyle">@style/MessageBar.Container</item>
-		<item name="messageBarTextStyle">@style/MessageBar.Message</item>
-		<item name="messageBarButtonStyle">@style/MessageBar.Button</item> -->
-        
         </style>
     
         <style name="AppThemeDark" parent="Theme.Sherlock" >
@@ -38,19 +34,19 @@
     <style name="btn_white">
     	<item name="android:gravity">center_vertical|center_horizontal</item>
     	<item name="android:textColor">#fff</item>
-    	<item name="android:textSize">16dip</item>
+    	<item name="android:textSize">14sp</item>
     	<item name="android:textStyle">bold</item>
     </style>
     <style name="btn_gray">
     	<item name="android:gravity">center_vertical|center_horizontal</item>
     	<item name="android:textColor">#b6b</item>
-    	<item name="android:textSize">16dip</item>
+    	<item name="android:textSize">14sp</item>
     	<item name="android:textStyle">bold</item>
     </style>
     <style name="btn_black">
     	<item name="android:gravity">center_vertical|center_horizontal</item>
     	<item name="android:textColor">#fff</item>
-    	<item name="android:textSize">16dip</item>
+    	<item name="android:textSize">12sp</item>
     	<item name="android:textStyle">bold</item>
     </style>
     

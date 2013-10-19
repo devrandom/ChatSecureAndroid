@@ -16,17 +16,21 @@
 
 package info.guardianproject.otr.app.im.provider;
 
+import info.guardianproject.otr.app.im.app.ImApp;
+
+import java.util.HashMap;
+
 import android.content.ContentQueryMap;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
+import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.net.Uri.Builder;
 import android.os.Handler;
 import android.provider.BaseColumns;
-
-import java.util.HashMap;
+import android.util.Log;
 
 /**
  * The IM provider stores all information about roster contacts, chat messages,
@@ -94,7 +98,9 @@ public class Imps {
                     retVal = cursor.getLong(cursor.getColumnIndexOrThrow(_ID));
                 }
             } finally {
-                cursor.close();
+                if (cursor != null)
+                    cursor.close();
+                
             }
 
             return retVal;
@@ -245,6 +251,10 @@ public class Imps {
         /** The content:// style URL for this table */
         public static final Uri CONTENT_URI = Uri
                 .parse("content://info.guardianproject.otr.app.im.provider.Imps/accounts");
+
+        /** The content:// style URL for looking up by domain */
+        public static final Uri BY_DOMAIN_URI = Uri
+                .parse("content://info.guardianproject.otr.app.im.provider.Imps/domainAccounts");
 
         /**
          * The MIME type of {@link #CONTENT_URI} providing a directory of
@@ -1879,6 +1889,7 @@ public class Imps {
         public static class QueryMap extends ContentQueryMap {
             private ContentResolver mContentResolver;
             private long mProviderId;
+            private Exception mStacktrace;
 
             public QueryMap(ContentResolver contentResolver, boolean keepUpdated,
                     Handler handlerForUpdateNotifications) {
@@ -1896,8 +1907,21 @@ public class Imps {
                
                 mContentResolver = contentResolver;
                 mProviderId = providerId;
+                mStacktrace = new Exception();
             }
-
+            @Override
+            public synchronized void close() {
+                mStacktrace = null;
+                super.close();
+            }
+            
+            @Override
+            protected void finalize() throws Throwable {
+                if (mStacktrace != null) {
+                    Log.w("GB.Imps", "QueryMap cursor not closed before finalize", mStacktrace);
+                }
+                super.finalize();
+            }
             /**
              * Set if the GTalk service should automatically connect to server.
              * 
@@ -1933,7 +1957,7 @@ public class Imps {
             }
 
             public String getXmppResource() {
-                return getString(XMPP_RESOURCE, "Gibberbot");
+                return getString(XMPP_RESOURCE, ImApp.DEFAULT_XMPP_RESOURCE);
             }
 
             public void setXmppResourcePrio(int prio) {
@@ -1941,7 +1965,7 @@ public class Imps {
             }
 
             public int getXmppResourcePrio() {
-                return (int) getLong(XMPP_RESOURCE_PRIO, 20);
+                return (int) getLong(XMPP_RESOURCE_PRIO, ImApp.DEFAULT_XMPP_PRIORITY);
             }
 
             public void setPort(int port) {
@@ -1990,7 +2014,7 @@ public class Imps {
             }
 
             public String getOtrMode() {
-                return getString(OTR_MODE, "auto" /* by default, try to use OTR */);
+                return getString(OTR_MODE, ImApp.DEFAULT_XMPP_OTR_MODE /* by default, try to use OTR */);
             }
 
             public void setUseTor(boolean value) {
@@ -2070,7 +2094,7 @@ public class Imps {
              * @return Whether or not to vibrate.
              */
             public boolean getVibrate() {
-                return getBoolean(NOTIFICATION_VIBRATE, false /* by default disable vibrate */);
+                return getBoolean(NOTIFICATION_VIBRATE, true /* by default enable vibrate */);
             }
 
             /**
@@ -2407,6 +2431,111 @@ public class Imps {
         /** The content:// style URL for this table. */
         public static final Uri CONTENT_URI = Uri
                 .parse("content://info.guardianproject.otr.app.im.provider.Imps/s2dids");
+    }
+
+    public static boolean isUnlocked(Context context)
+    {
+        try {
+            Cursor cursor = null;
+            
+            Uri uri = Imps.Provider.CONTENT_URI_WITH_ACCOUNT;
+            
+            Builder builder = uri.buildUpon();
+            builder = builder.appendQueryParameter(ImApp.NO_CREATE_KEY, "1");
+            
+            uri = builder.build();
+            
+            cursor = context.getContentResolver().query(
+                    uri, null, Imps.Provider.CATEGORY + "=?" /* selection */,
+                    new String[] { ImApp.IMPS_CATEGORY } /* selection args */,
+                    null);
+ 
+            if (cursor != null)
+            {
+                cursor.close();
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+            
+        } catch (Exception e) {
+            // Only complain if we thought this password should succeed
+            
+             Log.e(ImApp.LOG_TAG, e.getMessage(), e);
+            
+            // needs to be unlocked
+            return false;
+        }
+    }
+    
+
+    public static boolean isUnencrypted(Context context) {
+        try {
+            Cursor cursor = null;
+            
+            Uri uri = Imps.Provider.CONTENT_URI_WITH_ACCOUNT;
+            
+            Builder builder = uri.buildUpon();
+            builder.appendQueryParameter(ImApp.CACHEWORD_PASSWORD_KEY, "");
+            builder = builder.appendQueryParameter(ImApp.NO_CREATE_KEY, "1");
+            
+            uri = builder.build();
+            
+            cursor = context.getContentResolver().query(
+                    uri, null, Imps.Provider.CATEGORY + "=?" /* selection */,
+                    new String[] { ImApp.IMPS_CATEGORY } /* selection args */,
+                    null);
+ 
+            if (cursor != null)
+            {
+               cursor.close();
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+            
+        } catch (Exception e) {
+            // Only complain if we thought this password should succeed
+            
+             Log.e(ImApp.LOG_TAG, e.getMessage(), e);
+            
+            // needs to be unlocked
+            return false;
+        }
+    }
+    public static boolean setEmptyPassphrase(Context ctx, boolean noCreate) {
+        String pkey = "";
+    
+        Uri uri = Provider.CONTENT_URI_WITH_ACCOUNT;
+    
+        Builder builder = uri.buildUpon().appendQueryParameter(ImApp.CACHEWORD_PASSWORD_KEY, pkey);
+        if (noCreate) {
+            builder.appendQueryParameter(ImApp.NO_CREATE_KEY, "1");
+        }
+        uri = builder.build();
+    
+        Cursor cursor = ctx.getContentResolver().query(uri, null, null, null, null);
+        if (cursor != null) {
+            cursor.close();
+            return true;
+        }
+        return false;
+    }
+
+    public static void clearPassphrase(Context ctx) {
+        Uri uri = Provider.CONTENT_URI_WITH_ACCOUNT;
+    
+        Builder builder = uri.buildUpon().appendQueryParameter(ImApp.CLEAR_PASSWORD_KEY, "1");
+        uri = builder.build();
+    
+        Cursor cursor = ctx.getContentResolver().query(uri, null, null, null, null);
+        if (cursor != null) {
+            throw new RuntimeException("Unexpected cursor returned");
+        }
     }
 
 }

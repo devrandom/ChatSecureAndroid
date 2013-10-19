@@ -17,6 +17,7 @@
 
 package info.guardianproject.otr.app.im.app;
 
+import info.guardianproject.bouncycastle.util.encoders.Hex;
 import info.guardianproject.otr.app.im.plugin.ImConfigNames;
 import info.guardianproject.otr.app.im.provider.Imps;
 
@@ -53,54 +54,45 @@ public class DatabaseUtils {
     }
 
     public static Drawable getAvatarFromCursor(Cursor cursor, int dataColumn, int width, int height) {
-        byte[] rawData = cursor.getBlob(dataColumn);
-        if (rawData == null) {
+        String hexData = cursor.getString(dataColumn);
+        if (hexData.equals("NULL")) {
             return null;
         }
-        return decodeAvatar(rawData, width, height);
+        byte[] data = Hex.decode(hexData.substring(2, hexData.length() - 1));
+        return decodeAvatar(data, width, height);
     }
 
+    public static Drawable getAvatarFromAddress(ContentResolver cr, String address, int width, int height) {
+        
+        String[] projection =  {Imps.Contacts.AVATAR_DATA};
+        String[] args = {address};
+        String query = "username LIKE ?";
+        Cursor cursor = cr.query(Imps.Contacts.CONTENT_URI,projection,
+             query, args, Imps.Contacts.DEFAULT_SORT_ORDER);
+        
+        if (cursor.moveToFirst())
+        {
+            String hexData = cursor.getString(0);
+            cursor.close();
+            if (hexData.equals("NULL")) {
+                return null;
+            }
+            byte[] data = Hex.decode(hexData.substring(2, hexData.length() - 1));
+            return decodeAvatar(data, width, height);
+        }
+        else
+        {
+            cursor.close();
+            return null;
+        }
+    }
+
+    
     public static Uri getAvatarUri(Uri baseUri, long providerId, long accountId) {
         Uri.Builder builder = baseUri.buildUpon();
         ContentUris.appendId(builder, providerId);
         ContentUris.appendId(builder, accountId);
         return builder.build();
-    }
-
-    public static Drawable getAvatarFromCursor(Cursor cursor, int dataColumn,
-            int encodedDataColumn, String username, boolean updateBlobUseCursor,
-            ContentResolver resolver, Uri updateBlobUri, int width, int height) {
-        /**
-         * Optimization: the avatar table in IM content provider have two
-         * columns, one for the raw blob data, another for the base64 encoded
-         * data. The reason for this is when the avatars are initially
-         * downloaded, they are in the base64 encoded form, and instead of
-         * base64 decode the avatars for all the buddies up front, we can just
-         * simply store the encoded data in the table, and decode them on demand
-         * when displaying them. Once we decode the avatar, we store the decoded
-         * data as a blob, and null out the encoded column in the avatars table.
-         * query the raw blob data first, if present, great; if not, query the
-         * encoded data, decode it and store as the blob, and null out the
-         * encoded column.
-         */
-        byte[] rawData = cursor.getBlob(dataColumn);
-
-        if (rawData == null) {
-            String encodedData = cursor.getString(encodedDataColumn);
-            if (encodedData == null) {
-                // Log.e(LogTag.LOG_TAG, "getAvatarFromCursor for " + username +
-                // ", no raw or encoded data!");
-                return null;
-            }
-
-            if (updateBlobUseCursor) {
-            } 
-            else {
-                updateAvatarBlob(resolver, updateBlobUri, rawData, username);
-            }
-        }
-
-        return decodeAvatar(rawData, width, height);
     }
 
     public static void updateAvatarBlob(ContentResolver resolver, Uri updateUri, byte[] data, 
@@ -129,6 +121,29 @@ public class DatabaseUtils {
 
         return resolver.update(updateUri, values, buf.toString(), selectionArgs) > 0;
         
+    }
+    
+    public static boolean doesAvatarHashExist(ContentResolver resolver, Uri queryUri, 
+            String jid, String hash) {
+
+        StringBuilder buf = new StringBuilder(Imps.Avatars.CONTACT);
+        buf.append("=?");
+        buf.append(" AND ");
+        buf.append(Imps.Avatars.HASH);
+        buf.append("=?");
+
+        String[] selectionArgs = new String[] { jid, hash };
+
+        //return resolver.update(updateUri, values, buf.toString(), selectionArgs) > 0;
+        
+        Cursor cursor = resolver.query(queryUri, null, buf.toString(), selectionArgs, null);
+        if (cursor == null)
+            return false;
+        try {
+            return cursor.getCount() > 0;
+        } finally {
+            cursor.close();
+        }
     }
     
     public static void insertAvatarBlob(ContentResolver resolver, Uri updateUri, long providerId, long accountId, byte[] data, String hash,

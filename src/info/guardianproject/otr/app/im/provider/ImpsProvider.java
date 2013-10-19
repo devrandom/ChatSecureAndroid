@@ -16,14 +16,13 @@
 
 package info.guardianproject.otr.app.im.provider;
 
-import info.guardianproject.cacheword.CacheWordActivityHandler;
-import info.guardianproject.cacheword.ICacheWordSubscriber;
-import info.guardianproject.cacheword.SQLCipherOpenHelper;
 import info.guardianproject.otr.OtrAndroidKeyManagerImpl;
 import info.guardianproject.otr.app.im.app.ImApp;
+import info.guardianproject.util.Debug;
 import info.guardianproject.util.LogCleaner;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -44,14 +43,14 @@ import android.content.Context;
 import android.content.UriMatcher;
 import android.content.res.Configuration;
 import android.database.Cursor;
+import android.database.CursorWindow;
 import android.database.DatabaseUtils;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
 import android.text.TextUtils;
-import android.util.Log;
 
 /** A content provider for IM */
-public class ImpsProvider extends ContentProvider implements ICacheWordSubscriber {
+public class ImpsProvider extends ContentProvider {
     private static final String LOG_TAG = "imProvider";
     private static final boolean DBG = false;
 
@@ -82,7 +81,8 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
     private static final String TABLE_LAST_RMQ_ID = "lastrmqid";
     private static final String TABLE_S2D_RMQ_IDS = "s2dRmqIds";
 
-    private static final String DATABASE_NAME = "impsenc.db";
+    private static final String ENCRYPTED_DATABASE_NAME = "impsenc.db";
+    private static final String UNENCRYPTED_DATABASE_NAME = "imps.db";
     private static final int DATABASE_VERSION = 102;
 
     protected static final int MATCH_PROVIDERS = 1;
@@ -90,6 +90,7 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
     protected static final int MATCH_PROVIDERS_WITH_ACCOUNT = 3;
     protected static final int MATCH_ACCOUNTS = 10;
     protected static final int MATCH_ACCOUNTS_BY_ID = 11;
+    protected static final int MATCH_ACCOUNTS_WITH_DOMAIN = 12;
     protected static final int MATCH_CONTACTS = 18;
     protected static final int MATCH_CONTACTS_JOIN_PRESENCE = 19;
     protected static final int MATCH_CONTACTS_BAREBONE = 20;
@@ -157,9 +158,10 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
     protected static final int MATCH_S2D_RMQ_IDS = 204;
 
     protected final UriMatcher mUrlMatcher = new UriMatcher(UriMatcher.NO_MATCH);
-    private final String mTransientDbName;
+    private String mTransientDbName;
 
     private static final HashMap<String, String> sProviderAccountsProjectionMap;
+    private static final HashMap<String, String> sAccountsByDomainProjectionMap;
     private static final HashMap<String, String> sContactsProjectionMap;
     private static final HashMap<String, String> sContactListProjectionMap;
     private static final HashMap<String, String> sBlockedListProjectionMap;
@@ -169,6 +171,11 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
     private static final String PROVIDER_JOIN_ACCOUNT_TABLE = "providers LEFT OUTER JOIN accounts ON "
                                                               + "(providers._id = accounts.provider AND accounts.active = 1) "
                                                               + "LEFT OUTER JOIN accountStatus ON (accounts._id = accountStatus.account)";
+
+    private static final String DOMAIN_JOIN_ACCOUNT_TABLE = "providerSettings JOIN accounts ON "
+            + "(providerSettings.provider = accounts.provider AND providerSettings.name = '" + Imps.ProviderSettings.DOMAIN + "' AND accounts.active = 1) "
+            + "LEFT OUTER JOIN accountStatus ON (accounts._id = accountStatus.account)";
+
 
     private static final String CONTACT_JOIN_PRESENCE_TABLE = "contacts LEFT OUTER JOIN presence ON (contacts._id = presence.contact_id)";
 
@@ -205,7 +212,7 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
                                                       + Imps.Presence.CONTACT_ID;
 
     protected static DatabaseHelper mDbHelper;
-    private final String mDatabaseName;
+    private String mDatabaseName;
     private final int mDatabaseVersion;
     
 
@@ -241,8 +248,6 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
 
     // contact id query selection args 2
     private String[] mQueryContactIdSelectionArgs2 = new String[2];
-    
-    private CacheWordActivityHandler mCacheWord;
     
 
     private class DatabaseHelper extends SQLiteOpenHelper {
@@ -459,6 +464,9 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
                     db.endTransaction();
                 }
 
+                return;
+            case 101:
+                // This was a no-op upgrade when we added the encrypted DB option
                 return;
             case 1:
                 if (newVersion <= 100) {
@@ -794,6 +802,9 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
         sProviderAccountsProjectionMap.put(Imps.Provider.ACCOUNT_CONNECTION_STATUS,
                 "accountStatus.connStatus AS account_connStatus");
 
+        sAccountsByDomainProjectionMap = new HashMap<String, String>();
+        sAccountsByDomainProjectionMap.put(Imps.Account._ID, "accounts._id AS _id");
+
         // contacts projection map
         sContactsProjectionMap = new HashMap<String, String>();
 
@@ -840,7 +851,7 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
 
         // Avatars columns
         sContactsProjectionMap.put(Imps.Contacts.AVATAR_HASH, "avatars.hash AS avatars_hash");
-        sContactsProjectionMap.put(Imps.Contacts.AVATAR_DATA, "avatars.data AS avatars_data");
+        sContactsProjectionMap.put(Imps.Contacts.AVATAR_DATA, "quote(avatars.data) AS avatars_data");
 
         // contactList projection map
         sContactListProjectionMap = new HashMap<String, String>();
@@ -858,7 +869,7 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
         sBlockedListProjectionMap.put(Imps.BlockedList.NICKNAME, "nickname");
         sBlockedListProjectionMap.put(Imps.BlockedList.PROVIDER, "provider");
         sBlockedListProjectionMap.put(Imps.BlockedList.ACCOUNT, "account");
-        sBlockedListProjectionMap.put(Imps.BlockedList.AVATAR_DATA, "avatars.data AS avatars_data");
+        sBlockedListProjectionMap.put(Imps.BlockedList.AVATAR_DATA, "quote(avatars.data) AS avatars_data");
 
         // messages projection map
         sMessagesProjectionMap = new HashMap<String, String>();
@@ -912,17 +923,15 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
     }
 
     public ImpsProvider() {
-        this(DATABASE_NAME, DATABASE_VERSION);
+        this(DATABASE_VERSION);
 
     
         setupImUrlMatchers(AUTHORITY);
         setupMcsUrlMatchers(AUTHORITY);
     }
 
-    protected ImpsProvider(String dbName, int dbVersion) {
-        mDatabaseName = dbName;
+    protected ImpsProvider(int dbVersion) {
         mDatabaseVersion = dbVersion;
-        mTransientDbName = "transient_" + dbName.replace(".", "_");
     }
 
     private void setupImUrlMatchers(String authority) {
@@ -931,6 +940,7 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
         mUrlMatcher.addURI(authority, "providers/account", MATCH_PROVIDERS_WITH_ACCOUNT);
 
         mUrlMatcher.addURI(authority, "accounts", MATCH_ACCOUNTS);
+        mUrlMatcher.addURI(authority, "domainAccounts", MATCH_ACCOUNTS_WITH_DOMAIN);
         mUrlMatcher.addURI(authority, "accounts/#", MATCH_ACCOUNTS_BY_ID);
 
         mUrlMatcher.addURI(authority, "contacts", MATCH_CONTACTS);
@@ -1014,23 +1024,33 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
     @Override
     public boolean onCreate() {
 
-        mCacheWord = new CacheWordActivityHandler(getContext(), (ICacheWordSubscriber)this);        
-        mCacheWord.connectToService();
-
-
         return true;
     }
 
-    private synchronized DatabaseHelper initDBHelper(String pkey) throws Exception {
+    private void setDatabaseName(boolean isEncrypted) {
+        mDatabaseName = isEncrypted ? ENCRYPTED_DATABASE_NAME : UNENCRYPTED_DATABASE_NAME;
+        mTransientDbName = "transient_" + mDatabaseName.replace(".", "_");
+    }
+    
+    private synchronized DatabaseHelper initDBHelper(String pkey, boolean noCreate) throws Exception {
+        if (mDbHelper == null) {
+            if (pkey != null) {
+                setDatabaseName(!pkey.isEmpty());
+                Context ctx = getContext();
+                String path = ctx.getDatabasePath(mDatabaseName).getPath();
+                if (noCreate && !new File(path).exists()) {
+                    LogCleaner.debug(ImApp.LOG_TAG, "no DB exists at " + path);
+                    return null;
+                }
 
+                boolean inMemoryDb = false;
 
-        
-        if (mDbHelper == null && pkey != null) {
-            Context ctx = getContext();
-
-            boolean inMemoryDb = false;
-            
-            mDbHelper = new DatabaseHelper(ctx, pkey, inMemoryDb);
+                mDbHelper = new DatabaseHelper(ctx, pkey, inMemoryDb);
+                OtrAndroidKeyManagerImpl.setKeyStorePassword(pkey);
+                LogCleaner.debug(LOG_TAG, "Opened DB with key - empty=" + pkey.isEmpty());
+            } else {
+                LogCleaner.warn(ImApp.LOG_TAG, "DB not open and no password provided");
+            }
         }
 
         return mDbHelper;
@@ -1039,18 +1059,6 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
 
     private DatabaseHelper getDBHelper() {
         
-        if (mDbHelper == null)
-        {
-            //check if cacheword is open, and then init the mDbHelper
-            if (!mCacheWord.isLocked())
-            {
-                onCacheWordOpened();
-            }
-            else
-            {
-                //we need to exit somehow
-            }
-        }
         return mDbHelper;
     }
 
@@ -1134,7 +1142,7 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
     public Cursor queryInternal(Uri url, String[] projectionIn, String selection,
             String[] selectionArgs, String sort) {
         
-      
+        Debug.onServiceStart();
         
         if (!mLoadedLibs)
         {
@@ -1151,11 +1159,26 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
         String limit = null;
 
         String pkey = url.getQueryParameter(ImApp.CACHEWORD_PASSWORD_KEY);
+        boolean noCreate = "1".equals(url.getQueryParameter(ImApp.NO_CREATE_KEY));
+        boolean clearKey = "1".equals(url.getQueryParameter(ImApp.CLEAR_PASSWORD_KEY));
+        
+        if (clearKey) {
+            if (mDbHelper != null) {
+                mDbHelper.close();
+                mDbHelper = null;
+            }
+            return null;
+        }
         
         try {
-            initDBHelper(pkey);
+            initDBHelper(pkey, noCreate);
         } catch (Exception e) {
             LogCleaner.error(ImApp.LOG_TAG, e.getMessage(), e);
+            return null;
+        }
+        
+        if (mDbHelper == null) {
+            // Failed to open
             return null;
         }
         
@@ -1221,6 +1244,11 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
         case MATCH_PROVIDERS_WITH_ACCOUNT:
             qb.setTables(PROVIDER_JOIN_ACCOUNT_TABLE);
             qb.setProjectionMap(sProviderAccountsProjectionMap);
+            break;
+
+        case MATCH_ACCOUNTS_WITH_DOMAIN:
+            qb.setTables(DOMAIN_JOIN_ACCOUNT_TABLE);
+            qb.setProjectionMap(sAccountsByDomainProjectionMap);
             break;
 
         case MATCH_ACCOUNTS_BY_ID:
@@ -1516,8 +1544,15 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
             return null;
 
         // run the query
-        final SQLiteDatabase db = getDBHelper().getReadableDatabase();
-        Cursor c = null;
+        SQLiteDatabase db;
+        try {
+            db = getDBHelper().getReadableDatabase();
+        } catch (net.sqlcipher.database.SQLiteException e) {
+            // Failed to actually open - the passphrase must have been wrong - reset the helper
+            mDbHelper = null;
+            throw e;
+        }
+        net.sqlcipher.Cursor c = null;
 
         try {
             c = qb.query(db, projectionIn, whereClause.toString(), selectionArgs, groupBy, null,
@@ -1549,7 +1584,54 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
         }
         
 
+        c = new MyCrossProcessCursorWrapper(c);
         return c;
+    }
+    
+    static class MyCrossProcessCursorWrapper extends net.sqlcipher.CrossProcessCursorWrapper {
+        public MyCrossProcessCursorWrapper(net.sqlcipher.Cursor cursor) {
+            super(cursor);
+        }
+        
+        @Override
+        public void fillWindow(int position, CursorWindow window) {
+            if (position < 0 || position > getCount()) {
+                return;
+            }
+            window.acquireReference();
+            try {
+                moveToPosition(position - 1);
+                window.clear();
+                window.setStartPosition(position);
+                int columnNum = getColumnCount();
+                window.setNumColumns(columnNum);
+                boolean isFull = false;
+                int numRows = 10;
+                
+                while (!isFull && --numRows > 0 && moveToNext() && window.allocRow()) {
+                    for (int i = 0; i < columnNum; i++) {
+                        String field = getString(i);
+                        if (field != null) {
+                            if (!window.putString(field, getPosition(), i)) {
+                                window.freeLastRow();
+                                isFull = true;
+                                break;
+                            }
+                        } else {
+                            if (!window.putNull(getPosition(), i)) {
+                                window.freeLastRow();
+                                isFull = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch (IllegalStateException e) {
+                // simply ignore it
+            } finally {
+                window.releaseReference();
+            }
+        }
     }
 
     private void buildQueryContactsByProvider(SQLiteQueryBuilder qb, StringBuilder whereClause,
@@ -3540,34 +3622,4 @@ public class ImpsProvider extends ContentProvider implements ICacheWordSubscribe
            LogCleaner.debug(LOG_TAG, message);
     }
 
-    @Override
-    public void onCacheWordUninitialized() {
-        // TODO Auto-generated method stub
-        
-    }
-
-    @Override
-    public void onCacheWordLocked() {
-        // TODO Auto-generated method stub
-        
-    }
-
-    @Override
-    public void onCacheWordOpened() {
-
-        String pkey = SQLCipherOpenHelper.encodeRawKey(mCacheWord.getEncryptionKey());
-        
-        if (pkey != null)
-        {
-           
-            try {
-                this.initDBHelper(pkey);
-            } catch (Exception e) {
-               Log.e(ImApp.LOG_TAG,"unable to init cacheword in IMPSprovider",e);
-            }
-        
-           
-        }
-        
-    }
 }

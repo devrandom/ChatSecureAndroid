@@ -17,34 +17,47 @@
 
 package info.guardianproject.otr.app.im.app;
 
+import info.guardianproject.otr.app.im.IContactListManager;
 import info.guardianproject.otr.app.im.IImConnection;
 import info.guardianproject.otr.app.im.R;
 import info.guardianproject.otr.app.im.app.adapter.ConnectionListenerAdapter;
 import info.guardianproject.otr.app.im.engine.ImErrorInfo;
 import info.guardianproject.otr.app.im.provider.Imps;
 import info.guardianproject.util.LogCleaner;
+
+import java.util.Timer;
+import java.util.TimerTask;
+
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.DatabaseUtils;
 import android.net.Uri;
 import android.os.RemoteException;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.AttributeSet;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.AdapterView.OnItemLongClickListener;
+import android.widget.EditText;
 import android.widget.Filter;
+import android.widget.GridView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ResourceCursorAdapter;
 
-import com.tjerkw.slideexpandable.library.ActionSlideExpandableListView;
-
 public class ContactListFilterView extends LinearLayout {
 
-    private ActionSlideExpandableListView mFilterList;
+    private AbsListView mFilterList;
     private Filter mFilter;
     private ContactAdapter mContactAdapter;
 
@@ -54,7 +67,8 @@ public class ContactListFilterView extends LinearLayout {
     private final ConnectionListenerAdapter mConnectionListener;
 
     private IImConnection mConn;
-
+    private EditText mEtSearch;
+    
     public ContactListFilterView(Context context, AttributeSet attrs) {
         super(context, attrs);
 
@@ -64,6 +78,7 @@ public class ContactListFilterView extends LinearLayout {
             @Override
             public void onConnectionStateChange(IImConnection connection, int state,
                     ImErrorInfo error) {
+                
                 
             }
 
@@ -91,7 +106,7 @@ public class ContactListFilterView extends LinearLayout {
     @Override
     protected void onFinishInflate() {
 
-        mFilterList = (ActionSlideExpandableListView) findViewById(R.id.filteredList);
+        mFilterList = (AbsListView) findViewById(R.id.filteredList);
         mFilterList.setTextFilterEnabled(true);
 
         
@@ -106,7 +121,75 @@ public class ContactListFilterView extends LinearLayout {
             }
         });
         
-        mFilterList.setItemActionListener(new ActionSlideExpandableListView.OnActionClickListener() {
+        mFilterList.setOnItemLongClickListener(new OnItemLongClickListener()
+        {
+
+            @Override
+            public boolean onItemLongClick(AdapterView<?> arg0, View arg1, final int position, long arg3) {
+                
+                String[] contactOptions = {mContext.getString(R.string.contact_profile_title),mContext.getString(R.string.menu_remove_contact),mContext.getString(R.string.menu_block_contact)};
+                
+                AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
+                builder.setItems(contactOptions, new DialogInterface.OnClickListener() {
+                           public void onClick(DialogInterface dialog, int which) {
+                           // The 'which' argument contains the index position
+                           // of the selected item
+                               
+                               if (which == 0)
+                                   mListener.showProfile((Cursor)mFilterList.getItemAtPosition(position));
+                               else if (which == 1)
+                                   removeContactAtPosition(position);
+                               else if (which == 2)
+                                   blockContactAtPosition(position);
+                       }
+                });
+
+                builder.create().show();
+                
+                return true;
+
+
+            }
+            
+        });
+        
+        mEtSearch = (EditText)findViewById(R.id.contactSearch);
+        
+        mEtSearch.addTextChangedListener(new TextWatcher()
+        {
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                
+            }
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                
+                ContactListFilterView.this.doFilter(mEtSearch.getText().toString());
+
+            }
+            
+        });
+        
+        mEtSearch.setOnKeyListener(new OnKeyListener ()
+        {
+
+            @Override
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+               
+                ContactListFilterView.this.doFilter(mEtSearch.getText().toString());
+                return false;
+            }
+            
+        });
+        /*
+        mFilterList.setItemActionListener(new ListView.OnActionClickListener() {
 
             @Override
             public void onClick(View listView, View buttonview, int position) {
@@ -120,7 +203,8 @@ public class ContactListFilterView extends LinearLayout {
                 
             }
     }, R.id.btnExListChat, R.id.btnExListProfile);
-
+    */
+        
        // 
         
         //if (!isInEditMode())
@@ -128,7 +212,7 @@ public class ContactListFilterView extends LinearLayout {
 
     }
 
-    public ListView getListView() {
+    public AbsListView getListView() {
         return mFilterList;
     }
 
@@ -137,6 +221,7 @@ public class ContactListFilterView extends LinearLayout {
     }
 
     public void setConnection(IImConnection conn) {
+       
         if (mConn != conn) {
             if (mConn != null) {
                 unregisterListeners();
@@ -190,9 +275,24 @@ public class ContactListFilterView extends LinearLayout {
             Cursor contactCursor = runQuery(filterString);
             
             if (mContactAdapter == null) {
-                mContactAdapter = new ContactAdapter(mContext, contactCursor);
-                mFilter = mContactAdapter.getFilter();
-                mFilterList.setAdapter(mContactAdapter);
+                
+                if (mFilterList instanceof ListView)
+                {
+                    mContactAdapter = new ContactAdapter(mContext, R.layout.contact_view, contactCursor);
+                    mFilter = mContactAdapter.getFilter();
+
+                    ((ListView)mFilterList).setAdapter(mContactAdapter);
+                }
+                else if (mFilterList instanceof GridView)
+                {
+
+                    mContactAdapter = new ContactAdapter(mContext, R.layout.contact_view_grid_layout, contactCursor);
+                    mFilter = mContactAdapter.getFilter();
+                        
+                    ((GridView)mFilterList).setAdapter(mContactAdapter);
+                }
+                    
+                
             } else {
                 mContactAdapter.changeCursor(contactCursor);
             }
@@ -204,6 +304,8 @@ public class ContactListFilterView extends LinearLayout {
     }
 
     public void doFilter(String filterString) {
+        
+        if (mFilter != null && filterString != null)
         mFilter.filter(filterString);
 
     }
@@ -229,11 +331,17 @@ public class ContactListFilterView extends LinearLayout {
     }
 
     private class ContactAdapter extends ResourceCursorAdapter {
+        
         private String mSearchString;
 
+        private Timer timer = null;
+        private boolean isUpdating = false;
+        
         @SuppressWarnings("deprecation")
-        public ContactAdapter(Context context, Cursor cursor) {
-            super(context, R.layout.contact_view, cursor);
+        public ContactAdapter(Context context, int view, Cursor cursor) {
+            super(context, view, cursor);
+            
+            timer = new Timer();
         }
 
         @Override
@@ -247,6 +355,39 @@ public class ContactListFilterView extends LinearLayout {
         public void bindView(View view, Context context, Cursor cursor) {
             ContactView v = (ContactView) view;
             v.bind(cursor, mSearchString, false);
+            
+        }
+
+        @Override
+        protected void onContentChanged() {
+            
+            if (!isUpdating)
+            {
+
+                isUpdating = true;
+                
+                timer.schedule(new TimerTask(){
+    
+                    @Override
+                    public void run() {
+                       
+                        mHandler.post(new Runnable ()
+                        {
+                           public void run ()
+                           {    
+                               Cursor cursor = ContactListFilterView.this.runQuery(mSearchString);
+                           
+                               changeCursor(cursor);
+                           }
+                        });
+                        
+                        isUpdating = false;
+                    }
+                    
+                    
+                }, 1000l);
+            }
+                
         }
 
         @Override
@@ -289,5 +430,91 @@ public class ContactListFilterView extends LinearLayout {
             mContactAdapter = null;
         }
         
+    }
+
+    public void removeContactAtPosition(int packedPosition) {
+        removeContact((Cursor)mFilterList.getItemAtPosition(packedPosition));
+    }
+
+    void removeContact(Cursor c) {
+        if (c == null || mConn == null) {
+            mHandler.showAlert(R.string.error, R.string.select_contact);
+        } else {
+            
+            String nickname = c.getString(c.getColumnIndexOrThrow(Imps.Contacts.NICKNAME));
+            final String address = c.getString(c.getColumnIndexOrThrow(Imps.Contacts.USERNAME));
+            DialogInterface.OnClickListener confirmListener = new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int whichButton) {
+                    try {
+                        IContactListManager manager = mConn.getContactListManager();
+                        int res = manager.removeContact(address);
+                        if (res != ImErrorInfo.NO_ERROR) {
+                            mHandler.showAlert(R.string.error,
+                                    ErrorResUtils.getErrorRes(getResources(), res, address));
+                        }
+                    } catch (RemoteException e) {
+                        
+            mHandler.showServiceErrorAlert(e.getLocalizedMessage());
+            LogCleaner.error(ImApp.LOG_TAG, "remote error",e);
+                    }
+                }
+            };
+            Resources r = getResources();
+
+            new AlertDialog.Builder(mContext).setTitle(R.string.confirm)
+                    .setMessage(r.getString(R.string.confirm_delete_contact, nickname))
+                    .setPositiveButton(R.string.yes, confirmListener) // default button
+                    .setNegativeButton(R.string.no, null).setCancelable(false).show();
+
+
+        }
+    }
+
+    
+
+    public void blockContactAtPosition(int packedPosition) {
+        blockContact((Cursor)mFilterList.getItemAtPosition(packedPosition));
+    }
+
+    void blockContact(Cursor c) {
+        if (c == null || mConn == null) {
+            mHandler.showAlert(R.string.error, R.string.select_contact);
+        } else {
+            String nickname = c.getString(c.getColumnIndexOrThrow(Imps.Contacts.NICKNAME));
+            final String address = c.getString(c.getColumnIndexOrThrow(Imps.Contacts.USERNAME));
+            DialogInterface.OnClickListener confirmListener = new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int whichButton) {
+                    try {
+                        IContactListManager manager = mConn.getContactListManager();
+                        
+                        int res = -1;
+                        
+                        if (manager.isBlocked(address))
+                            res = manager.unBlockContact(address);
+                        else
+                        {
+                            res = manager.blockContact(address);
+                            
+                            if (res != ImErrorInfo.NO_ERROR) {
+                                mHandler.showAlert(R.string.error,
+                                        ErrorResUtils.getErrorRes(getResources(), res, address));
+                            }
+                        }
+                    } catch (RemoteException e) {
+                        
+            mHandler.showServiceErrorAlert(e.getLocalizedMessage());
+            LogCleaner.error(ImApp.LOG_TAG, "remote error",e);
+                    }
+                }
+            };
+
+            Resources r = getResources();
+
+            new AlertDialog.Builder(mContext).setTitle(R.string.confirm)
+                    .setMessage(r.getString(R.string.confirm_block_contact, nickname))
+                    .setPositiveButton(R.string.yes, confirmListener) // default button
+                    .setNegativeButton(R.string.no, null).setCancelable(false).show();
+            
+        }
     }
 }
