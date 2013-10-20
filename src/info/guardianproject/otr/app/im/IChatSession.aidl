@@ -37,6 +37,10 @@ interface IChatSession {
      */
     void unregisterChatListener(IChatListener listener);
 
+    void registerDataListener(IDataListener listener);
+
+    void unregisterDataListener(IDataListener listener);
+
     /**
      * Tells if this ChatSession is a group session.
      */
@@ -119,8 +123,4 @@ interface IChatSession {
      * Get remote DataPlug descriptors
      */
     List<Descriptor> getRemoteDataPlugDescriptors();
-    /**
-    * set class for handling incoming data transfers
-    */
-    void setDataListener (IDataListener dataListener);
 }

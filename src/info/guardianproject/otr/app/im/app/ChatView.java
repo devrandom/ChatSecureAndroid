@@ -1264,7 +1264,7 @@ public class ChatView extends LinearLayout {
         try {
             if (getChatSession() != null) {
                 getChatSession().registerChatListener(mChatListener);
-                getChatSession().setDataListener(mDataListenerAdapter);
+                getChatSession().registerDataListener(mDataListenerAdapter);
             }
             IImConnection conn = mApp.getConnection(mProviderId);
             if (conn != null) {
@@ -1282,7 +1282,7 @@ public class ChatView extends LinearLayout {
         }
         try {
             if (getChatSession() != null) {
-                getChatSession().setDataListener(null);
+                getChatSession().unregisterDataListener(mDataListenerAdapter);
                 getChatSession().unregisterChatListener(mChatListener);
             }
             IImConnection conn = mApp.getConnection(mProviderId);

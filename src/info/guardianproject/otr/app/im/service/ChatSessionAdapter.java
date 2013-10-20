@@ -105,6 +105,7 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
     private DataHandler mDataHandler;
 
     private IDataListener mDataListener;
+    final RemoteCallbackList<IDataListener> mRemoteDataListeners = new RemoteCallbackList<IDataListener>();
 
     private Address mLocalUser;
     
@@ -138,7 +139,6 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
     {
         mDataListener = new DataAdapter();
         mDataHandler = new OtrDataHandler(mChatSession);
-        // FIXME we have two of these now?
         mDataHandler.setDataListener(mDataListener);
         mOtrChatSession = new OtrChatSessionAdapter(mConnection.getLoginUser().getAddress().getAddress(), mChatSession.getParticipant().getAddress().getAddress(), service.getOtrChatManager());
         // add OtrChatListener as the intermediary to mListenerAdapter so it can filter OTR msgs
@@ -383,6 +383,18 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
         }
     }
 
+    public void registerDataListener(IDataListener listener) {
+        if (listener != null) {
+            mRemoteDataListeners.register(listener);
+        }
+    }
+
+    public void unregisterDataListener(IDataListener listener) {
+        if (listener != null) {
+            mRemoteDataListeners.unregister(listener);
+        }
+    }
+
     public void markAsRead() {
         if (mHasUnreadMessages) {
             ContentValues values = new ContentValues(1);
@@ -609,18 +621,44 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
             String nickname = getNickName(username);
             mStatusBarNotifier.notifyChat(mConnection.getProviderId(), mConnection.getAccountId(),
                     getId(), username, nickname, "File received", false);
+            int N = mRemoteListeners.beginBroadcast();
+            for (int i = 0; i < N; i++) {
+                IDataListener listener = mRemoteDataListeners.getBroadcastItem(i);
+                try {
+                    listener.onTransferComplete(username, url, type, localpath);
+                } catch (RemoteException e) {
+                    // The RemoteCallbackList will take care of removing the dead listeners
+                }
+            }
+            mRemoteListeners.finishBroadcast();
         }
 
         @Override
         public void onTransferFailed(String from, String url, String reason) {
-            // TODO Auto-generated method stub
-            
+            int N = mRemoteListeners.beginBroadcast();
+            for (int i = 0; i < N; i++) {
+                IDataListener listener = mRemoteDataListeners.getBroadcastItem(i);
+                try {
+                    listener.onTransferFailed(from, url, reason);
+                } catch (RemoteException e) {
+                    // The RemoteCallbackList will take care of removing the dead listeners
+                }
+            }
+            mRemoteListeners.finishBroadcast();
         }
 
         @Override
         public void onTransferProgress(String from, String url, float f) {
-            // TODO Auto-generated method stub
-            
+            int N = mRemoteListeners.beginBroadcast();
+            for (int i = 0; i < N; i++) {
+                IDataListener listener = mRemoteDataListeners.getBroadcastItem(i);
+                try {
+                    listener.onTransferProgress(from, url, f);
+                } catch (RemoteException e) {
+                    // The RemoteCallbackList will take care of removing the dead listeners
+                }
+            }
+            mRemoteListeners.finishBroadcast();
         }
 
         @Override
@@ -667,16 +705,25 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
         }
 
         @Override
-        public IBinder asBinder() {
-            // TODO Auto-generated method stub
-            return null;
+        public boolean onTransferRequested(String from, String to, String transferUrl) {
+            boolean result = false;
+            int N = mRemoteListeners.beginBroadcast();
+            for (int i = 0; i < N; i++) {
+                IDataListener listener = mRemoteDataListeners.getBroadcastItem(i);
+                try {
+                    result = result || listener.onTransferRequested(from, to, transferUrl);
+                } catch (RemoteException e) {
+                    // The RemoteCallbackList will take care of removing the dead listeners
+                }
+            }
+            mRemoteListeners.finishBroadcast();
+            return result;
         }
 
         @Override
-        public boolean onTransferRequested(String from, String to, String transferUrl)
-                throws RemoteException {
-            // TODO Auto-generated method stub
-            return false;
+        public IBinder asBinder() {
+            // This is use locally
+            return null;
         }
     }
     
@@ -956,12 +1003,5 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
     @Override
     public void activatePlugin(String uri) throws RemoteException {
         Discoverer.getInstance(service).activatePlug(mLocalUser.getAddress(), getAddress(), uri);
-    }
-
-    @Override
-    public void setDataListener(IDataListener dataListener) throws RemoteException {
-        
-        mDataHandler.setDataListener(mDataListener);
-        mDataListener = dataListener;
     }
 }
