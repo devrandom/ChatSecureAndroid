@@ -17,10 +17,9 @@
 
 package info.guardianproject.otr.app.im.app;
 
-import info.guardianproject.otr.app.im.provider.Imps;
-
+import info.guardianproject.otr.app.im.IImConnection;
 import info.guardianproject.otr.app.im.R;
-
+import info.guardianproject.otr.app.im.provider.Imps;
 import android.app.ListActivity;
 import android.content.Context;
 import android.content.Intent;
@@ -28,6 +27,7 @@ import android.database.Cursor;
 import android.database.DatabaseUtils;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.RemoteException;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -41,7 +41,8 @@ import android.widget.ResourceCursorAdapter;
 public class ContactsPickerActivity extends ListActivity {
     public final static String EXTRA_EXCLUDED_CONTACTS = "excludes";
 
-    public final static String EXTRA_RESULT_USERNAME = "result";
+    public final static String EXTRA_RESULT_USERNAME = "peer";
+    private static final String EXTRA_RESULT_ACCOUNT = "account";
 
     private ContactsAdapter mAdapter;
     private String mExcludeClause;
@@ -58,6 +59,7 @@ public class ContactsPickerActivity extends ListActivity {
         super.onCreate(icicle);
 
         setContentView(R.layout.contacts_picker_activity);
+        
         if (!resolveIntent()) {
             if (Log.isLoggable(ImApp.LOG_TAG, Log.DEBUG)) {
                 log("no data, finish");
@@ -79,7 +81,7 @@ public class ContactsPickerActivity extends ListActivity {
             }
         });
     }
-
+    
     private boolean resolveIntent() {
         Intent intent = getIntent();
         mData = intent.getData();
@@ -128,7 +130,25 @@ public class ContactsPickerActivity extends ListActivity {
     protected void onListItemClick(ListView l, View v, int position, long id) {
         Cursor cursor = (Cursor) mAdapter.getItem(position);
         Intent data = new Intent();
-        data.putExtra(EXTRA_RESULT_USERNAME, cursor.getString(ContactView.COLUMN_CONTACT_USERNAME));
+        String peer = cursor.getString(ContactView.COLUMN_CONTACT_USERNAME);
+        long accountId = cursor.getLong(ContactView.COLUMN_CONTACT_ACCOUNT);
+        IImConnection connection = ((ImApp)getApplication()).getConnectionByAccount(accountId);
+        if (connection == null) {
+            log("no connection");
+            setResult(RESULT_CANCELED, null);
+            finish();
+            return;
+        }
+
+        try {
+            data.putExtra(EXTRA_RESULT_ACCOUNT, connection.getUserAddress());
+        } catch (RemoteException e) {
+            log("remote exception when getting user address");
+            setResult(RESULT_CANCELED, null);
+            finish();
+            return;
+        }
+        data.putExtra(EXTRA_RESULT_USERNAME, peer);
         setResult(RESULT_OK, data);
         finish();
     }

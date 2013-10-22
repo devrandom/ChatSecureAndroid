@@ -254,6 +254,11 @@ public class ImConnectionAdapter extends info.guardianproject.otr.app.im.IImConn
     public Contact getLoginUser() {
         return mConnection.getLoginUser();
     }
+    
+    @Override
+    public String getUserAddress() throws RemoteException {
+        return getLoginUser().getAddress().getAddress();
+    }
 
     public Presence getUserPresence() {
         return mConnection.getUserPresence();
