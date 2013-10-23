@@ -15,14 +15,6 @@
  */
 package info.guardianproject.otr.dataplug;
 
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.net.URLDecoder;
-import java.util.Set;
-import java.util.UUID;
-
-import org.json.JSONException;
-
 import android.app.Service;
 import android.content.Intent;
 import android.os.Bundle;
@@ -32,6 +24,14 @@ import android.util.Log;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Sets;
+
+import org.json.JSONException;
+
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.net.URLDecoder;
+import java.util.Set;
+import java.util.UUID;
 
 
 /**
@@ -115,7 +115,7 @@ public abstract class DataplugService extends Service {
                 }
                 String rangeHeader = "Range: bytes=" + current + "-" + end;
 
-                Request request = sendOutgoingRequest(mAccountId, mFriendId, mUri, rangeHeader, new RequestCallback() {
+                Request request = sendOutgoingRequest(mAccountId, mFriendId, "GET", mUri, rangeHeader, new RequestCallback() {
                 	@Override
                 	public void onResponse(Request aRequest, byte[] aContent, String headersString) {
                 		if (mStream == null)
@@ -339,17 +339,17 @@ public abstract class DataplugService extends Service {
 	}
 	
 	protected Request sendOutgoingRequest(String aAccountId, String aFriendId, String aUri, RequestCallback aCallback) {
-		return sendOutgoingRequest(aAccountId, aFriendId, aUri, "", aCallback);
+		return sendOutgoingRequest(aAccountId, aFriendId, "GET", aUri, "", aCallback);
 	}
-	
-	protected Request sendOutgoingRequest(String aAccountId, String aFriendId, String aUri, String headers, RequestCallback aCallback) {
+
+	protected Request sendOutgoingRequest(String aAccountId, String aFriendId, String aMethod, String aUri, String headers, RequestCallback aCallback) {
 		Request request = new Request( aAccountId, aFriendId, aUri, aCallback );
 		mOutgoingCache.put(request) ;
 	
 		info( "sendOutgoingRequest: EXTRA_URI:" + aUri ) ;
 		Intent zIntent = new Intent();
 		zIntent.setAction(Api.ACTION_OUTGOING_REQUEST) ;
-		zIntent.putExtra( Api.EXTRA_METHOD , "GET" ) ;
+		zIntent.putExtra( Api.EXTRA_METHOD , aMethod ) ;
 		zIntent.putExtra( Api.EXTRA_URI, aUri ) ;
 		zIntent.putExtra( Api.EXTRA_HEADERS, headers) ;
 		zIntent.putExtra( Api.EXTRA_ACCOUNT_ID , aAccountId ) ;
