@@ -1,7 +1,6 @@
 package info.guardianproject.otr;
 
 import info.guardianproject.otr.app.im.IDataListener;
-import info.guardianproject.otr.app.im.app.ImApp;
 import info.guardianproject.otr.app.im.engine.Address;
 import info.guardianproject.otr.app.im.engine.ChatSession;
 import info.guardianproject.otr.app.im.engine.DataHandler;
@@ -157,7 +156,7 @@ public class OtrDataHandler implements DataHandler {
         String uid = req.getFirstHeader("Request-Id").getValue();
         String url = req.getRequestLine().getUri();
 
-        if (requestMethod.equals("OFFER")) {
+        if (requestMethod.equals("OFFER") && url.startsWith(URI_PREFIX_OTR_IN_BAND)) {
             debug("incoming OFFER " + url);
             if (!url.startsWith(URI_PREFIX_OTR_IN_BAND)) {
                 debug("Unknown url scheme " + url);
@@ -734,6 +733,6 @@ public class OtrDataHandler implements DataHandler {
     private void debug (String msg)
     {
         if (Debug.DEBUG_ENABLED)
-            Log.d(ImApp.LOG_TAG,msg);
+            Log.d(TAG, msg);
     }
 }

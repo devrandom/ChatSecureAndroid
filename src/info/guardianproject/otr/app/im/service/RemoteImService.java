@@ -793,7 +793,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
     @Override
     public IImConnection getConnectionForLocalAddress(String accountId) {
         for (ImConnectionAdapter conn : mConnections) {
-            if (conn.getLoginUser().getName().equals(accountId)) {
+            if (conn.getLoginUser().getAddress().getBareAddress().equals(accountId)) {
                 return conn;
             }
         }
