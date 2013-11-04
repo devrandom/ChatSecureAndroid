@@ -3,6 +3,7 @@ package info.guardianproject.otr.app.im.app;
 import info.guardianproject.otr.app.im.R;
 import android.app.Activity;
 import android.content.SharedPreferences;
+import android.database.DataSetObserver;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.ListFragment;
@@ -15,16 +16,20 @@ import android.widget.ListView;
 public class AccountsFragment extends ListFragment {
         private AccountListActivity mActivity;
         private View mEmptyView;
+        private EmptinessObserver mObserver;
         
         @Override
         public void onAttach(Activity activity) {
             super.onAttach(activity);
             mActivity = (AccountListActivity)activity;
             setListAdapter(mActivity.getAdapter());
+            mObserver = new EmptinessObserver();
+            getListAdapter().registerDataSetObserver(mObserver);
         }
         
         @Override
         public void onDetach() {
+            getListAdapter().unregisterDataSetObserver(mObserver);
             super.onDetach();
             mActivity = null;
         }
@@ -52,13 +57,24 @@ public class AccountsFragment extends ListFragment {
             return super.onCreateView(inflater, container, savedInstanceState);
         }
         
+        public class EmptinessObserver extends DataSetObserver {
+            @Override
+            public void onChanged() {
+                setListShown(true);
+            }
+            
+            @Override
+            public void onInvalidated() {
+                setListShown(false);
+            }
+        }
+
         public void onViewCreated(View view, Bundle savedInstanceState) {
             SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getActivity());
             boolean themeDark = settings.getBoolean("themeDark", false);
             String themebg = settings.getString("pref_background", null);
 
             ((ViewGroup)getListView().getParent()).addView(mEmptyView);
-
             getListView().setEmptyView(mEmptyView);
 
             if (themebg == null && (!themeDark))

@@ -3,16 +3,16 @@
  */
 package info.guardianproject.otr.app.im.app;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import info.guardianproject.otr.app.im.IImConnection;
 import info.guardianproject.otr.app.im.engine.ImConnection;
 import info.guardianproject.otr.app.im.provider.Imps;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.Context;
-import android.content.res.Resources;
 import android.database.Cursor;
 import android.os.AsyncTask;
 import android.os.RemoteException;
@@ -119,7 +119,6 @@ public class AccountAdapter extends CursorAdapter {
     }
 
     private void runBindTask( final Activity context, final List<AccountInfo> accountInfoList ) {
-        final Resources resources = context.getResources();
         final ContentResolver resolver = context.getContentResolver();
         final ImApp mApp = (ImApp)context.getApplication();
         
@@ -133,6 +132,8 @@ public class AccountAdapter extends CursorAdapter {
             protected List<AccountSetting> doInBackground(Void... params) {
                 List<AccountSetting> accountSettingList = new ArrayList<AccountSetting>();
                 for( AccountInfo ai : accountInfoList ) {
+                    if (isCancelled())
+                        return null;
                     accountSettingList.add( getAccountSettings(ai) );
                 }
                 return accountSettingList;
