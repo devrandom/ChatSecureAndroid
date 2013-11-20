@@ -44,6 +44,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 
+import net.hockeyapp.android.CrashManager;
+import net.hockeyapp.android.CrashManagerListener;
 import android.app.Activity;
 import android.app.Application;
 import android.content.ComponentName;
@@ -63,6 +65,7 @@ import android.database.Cursor;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.os.DeadObjectException;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
@@ -257,18 +260,18 @@ public class ImApp extends Application {
         
         if (themeDark)
         {            
-            setTheme(R.style.Theme_Sherlock);
+            setTheme(R.style.AppThemeDark);
             
             if (activity != null)
-                activity.setTheme(R.style.Theme_Sherlock);
+                activity.setTheme(R.style.AppThemeDark);
         }
         else
         {
-            setTheme(R.style.Theme_Sherlock_Light);
+            setTheme(R.style.AppTheme);
             
             
             if (activity != null)
-                activity.setTheme(R.style.Theme_Sherlock_Light);
+                activity.setTheme(R.style.AppTheme);
         }
         
         Configuration config = getResources().getConfiguration();
@@ -457,7 +460,7 @@ public class ImApp extends Application {
             if (Log.isLoggable(LOG_TAG, Log.DEBUG))
                 log("service disconnected");
 
-            //mConnections.clear();
+            mConnections.clear();
             mImService = null;
         }
     };
@@ -700,7 +703,24 @@ public class ImApp extends Application {
             if (mConnections.size() == 0)
                 fetchActiveConnections();
             
-            return mConnections.get(providerId);
+            IImConnection im = mConnections.get(providerId);
+            
+            if (im != null)
+            {
+                try 
+                {
+                    im.getState();
+                }
+                catch (RemoteException doe)
+                {
+                    mConnections.clear();
+                    //something is wrong
+                    fetchActiveConnections();
+                    im = mConnections.get(providerId);
+                }
+            }
+            
+            return im;
         }
     }
 
@@ -897,6 +917,7 @@ public class ImApp extends Application {
                     break;
 
                 case ImConnection.LOGGING_OUT:
+                    // NOTE: if this logic is changed, the logic in ImConnectionAdapter.ConnectionAdapterListener must be changed to match
                     what = EVENT_CONNECTION_LOGGING_OUT;
                     // MIRON - remove only if disconnected!
                     //                    synchronized (mConnections) {
@@ -905,6 +926,7 @@ public class ImApp extends Application {
                     break;
 
                 case ImConnection.DISCONNECTED:
+                    // NOTE: if this logic is changed, the logic in ImConnectionAdapter.ConnectionAdapterListener must be changed to match
                     what = EVENT_CONNECTION_DISCONNECTED;
                     synchronized (mConnections) {
                         mConnections.remove(providerId);
@@ -986,5 +1008,12 @@ public class ImApp extends Application {
         ImPluginHelper.getInstance(this).loadAvailablePlugins();
     }
 
-   
+    public void checkForCrashes(final Activity activity) {
+        CrashManager.register(activity, ImApp.HOCKEY_APP_ID, new CrashManagerListener() {
+            @Override
+            public String getDescription() {
+                return Debug.getTrail(activity);
+            }
+        });
+    }
 }

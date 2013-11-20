@@ -1,8 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="info.guardianproject.otr.app.im" 
     android:sharedUserLabel="@string/perm_label"
-     android:versionName="12.6.4"
-     android:versionCode="89"
+     android:versionName="13.0.3"
+     android:versionCode="96"
      android:installLocation="auto"     
      >     
     <supports-screens
@@ -51,7 +51,7 @@ android:anyDensity="true"
 
     <application android:name=".app.ImApp"
              android:label="@string/im_label"
-             android:icon="@drawable/ic_launcher_chatsecure"
+             android:icon="@drawable/ic_launcher"
              android:theme="@style/AppTheme"
              android:allowBackup="false"
 			>
@@ -164,7 +164,8 @@ android:anyDensity="true"
                 <action android:name="info.guardianproject.otr.app.im.dataplug.OUTGOING_RESPONSE" />
              </intent-filter>
         </service>
-
+        <service android:name=".service.HeartbeatService" android:exported="false" />
+        
         <provider
             android:name=".provider.ImpsProvider"
             android:authorities="info.guardianproject.otr.app.im.provider.Imps"
@@ -425,7 +426,16 @@ android:anyDensity="true"
              />
           
         <activity android:name="net.hockeyapp.android.UpdateActivity" />
-        
-        
-    </application>
+        <activity
+             android:name=".app.DummyActivity"
+             android:allowTaskReparenting="true"
+             android:alwaysRetainTaskState="false"
+             android:clearTaskOnLaunch="true"
+             android:enabled="true"
+             android:excludeFromRecents="true"
+             android:finishOnTaskLaunch="true"
+             android:noHistory="true"
+             android:stateNotNeeded="true"
+             android:theme="@android:style/Theme.NoDisplay" />
+</application>
 </manifest>

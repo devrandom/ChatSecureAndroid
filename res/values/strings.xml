@@ -108,8 +108,10 @@
     -->
     <string name="menu_view_profile">Verify</string>
     <!-- Context/drop-down menu item for picking an image to send. -->
-    <string name="menu_send_image">Send Image</string>
+    <string name="menu_send_image">Send Photo</string>
     <string name="menu_send_file">Send File</string>
+    <string name="menu_send_audio">Send Audio</string>
+    
     
     
     
@@ -209,6 +211,7 @@
     <string name="signing_in_to">getting the ChatSecure going...</string>
     <!-- This is the progress/status text displayed in the middle of the sign-in progress screen. -->
     <string name="signing_in_wait">Signing in\u2026</string>
+    <string name="signing_out_wait">Signing out\u2026</string>
     <!-- Dialog title -->
     <!--
     This is the title for the background data prompt dialog, asking the user whether
@@ -316,8 +319,8 @@
     <string name="me">Me</string>
     <!-- On the chat screen, this is the hint text in the input field where the user enters the
     chat. This needs to fit in both portrait and landscape mode -->
-    <string name="compose_hint">Send a message</string> 
-    <string name="compose_hint_secure">Send a secure message</string> 
+    <string name="compose_hint">Send a message</string>
+    <string name="compose_hint_secure">Send secure message</string>  
        
     <!-- Inline status message in the chat history list, when receiving a "online" status update. -->
     <string name="contact_online"><xliff:g id="user">%1$s</xliff:g> is online</string>
@@ -685,7 +688,7 @@
 	
 	<string name="otr_session_status_plaintext">Encryption is off</string>
 	<string name="otr_session_status_encrypted">Encryption is on (Tap to verify)</string>
-	<string name="otr_session_status_finished">Encryption has been stopped</string>
+	<string name="otr_session_status_finished">Your contact has stopped the encrypted chat.</string>
 	<string name="otr_session_status_verified">Encrypted and verified!</string>
 	
 	<string name="account_wizard_setup_title">Account Wizard</string>
@@ -845,6 +848,8 @@
     
     <string name="buddies">Buddies</string>
     
+    <string name="contacts">Contacts</string>
+    
     <string name="select_domain_new_account">Choose a domain</string>
     
     <string name="otr_keysync_warning_message">Please copy the \'otr_keystore.ofcaes\' file from the desktop OtrFileConverter tool to the root directory of your device storage</string>
@@ -864,4 +869,23 @@
     <string name="fingerprint_for_">"Fingerprint for "</string>
     
     <string name="please_enable_chat_encryption_to_share_files">Please enable chat encryption to share files</string>
+    <string name="swipe_alert">ChatSecure detected that a request was made to remove its task.  ChatSecure will likely crash.  Please use the Sign out all menu item from the account list screen instead.</string>
+    
+    <string name="file_transfer">File Transfer</string>
+    
+    <string name="transfer_complete">Transfer Complete</string>
+    
+    <string name="transfer_in_progress">Transfer in progress</string>
+    
+    <string name="accept_transfer_">Accept transfer?</string>
+    
+    <string name="wants_to_send_you_the_file">wants to send you the file</string>
+    
+    <string name="menu_show_grid">Show Grid</string>
+    
+    <string name="pref_show_grid">Show Contact Grid</string>
+    <string name="pref_show_grid_summary">Display contact list as avatar grid</string>
+    <string name="button_yes_accept_all">Yes, Accept All</string>
+    
+    <string name="app_unlocked">Activated &amp; unlocked</string>
 </resources>

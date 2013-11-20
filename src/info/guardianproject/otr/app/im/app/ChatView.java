@@ -75,6 +75,7 @@ import android.database.CursorIndexOutOfBoundsException;
 import android.database.DataSetObserver;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -163,24 +164,26 @@ public class ChatView extends LinearLayout {
     private TextView mWarningText;
     
     private ViewPager mEmojiPager;
-    private View mActionBox;
+   // private View mActionBox;
 
     private ImageView mDeliveryIcon;
     private boolean mExpectingDelivery;
     
-    private CompoundButton mOtrSwitch;
-    private boolean mOtrSwitchTouched = false;
+    //private CompoundButton mOtrSwitch;
+    //private boolean mOtrSwitchTouched = false;
     
     private boolean mIsSelected = false;
     
 
-    SessionStatus mLastSessionStatus = null;
+    private SessionStatus mLastSessionStatus = null;
+    private boolean mIsVerified = false;
     
     
     
     public void setSelected (boolean isSelected)
     {
         mIsSelected = isSelected;
+        updateWarningView();
     }
     
     private OnCheckedChangeListener mOtrListener = new OnCheckedChangeListener ()
@@ -191,7 +194,7 @@ public class ChatView extends LinearLayout {
 
             setOTRState(isChecked);
 
-            mOtrSwitchTouched = true;
+            //mOtrSwitchTouched = true;
             updateWarningView();
         }
         
@@ -218,11 +221,21 @@ public class ChatView extends LinearLayout {
                             
                         if (otrEnabled) {
                             otrChatSession.startChatEncryption();
+                            mActivity.setSupportProgressBarIndeterminateVisibility(true);
+                            
+
                         }
                         else
                         {
                             otrChatSession.stopChatEncryption();    
-                        }                 
+                            mActivity.setSupportProgressBarIndeterminateVisibility(false);
+                            
+                        }   
+                        
+
+                        mHandler.postAtTime(new Runnable (){
+                           public void run (){ updateWarningView();}
+                        }, 2000);
                     
                      
                     }
@@ -261,8 +274,8 @@ public class ChatView extends LinearLayout {
     private static final int VIEW_TYPE_INVITATION = 2;
     private static final int VIEW_TYPE_SUBSCRIPTION = 3;
 
-    private static final long SHOW_TIME_STAMP_INTERVAL = 30 * 1000; // 1 minute
-    private static final long SHOW_DELIVERY_INTERVAL = 5 * 1000; // 10 seconds
+    private static final long SHOW_TIME_STAMP_INTERVAL = 15 * 1000; // 15 seconds
+    private static final long SHOW_DELIVERY_INTERVAL = 5 * 1000; // 5 seconds
     private static final long DEFAULT_QUERY_INTERVAL = 1000;
     private static final long FAST_QUERY_INTERVAL = 100;
     private static final int QUERY_TOKEN = 10;
@@ -276,7 +289,7 @@ public class ChatView extends LinearLayout {
         @Override
         protected void onQueryComplete(int token, Object cookie, Cursor c) {
             mExpectingDelivery = false;
-            setDeliveryIcon();
+          
             
             if (c != null)
             {
@@ -463,7 +476,7 @@ public class ChatView extends LinearLayout {
     @Override
     protected void onFinishInflate() {
       //  mStatusIcon = (ImageView) findViewById(R.id.statusIcon);
-        mDeliveryIcon = (ImageView) findViewById(R.id.deliveryIcon);
+     //   mDeliveryIcon = (ImageView) findViewById(R.id.deliveryIcon);
        // mTitle = (TextView) findViewById(R.id.title);
         mHistory = (ListView) findViewById(R.id.history);
         mComposeMessage = (EditText) findViewById(R.id.composeMessage);
@@ -474,7 +487,7 @@ public class ChatView extends LinearLayout {
         mWarningIcon = (ImageView) findViewById(R.id.warningIcon);
         mWarningText = (TextView) findViewById(R.id.warningText);
      
-        mOtrSwitch = (CompoundButton)findViewById(R.id.otrSwitch);
+       // mOtrSwitch = (CompoundButton)findViewById(R.id.otrSwitch);
        
         mHistory.setOnItemLongClickListener(new OnItemLongClickListener ()
         {
@@ -521,9 +534,7 @@ public class ChatView extends LinearLayout {
 
         });
         
-        mOtrSwitch.setOnCheckedChangeListener(mOtrListener);
-        
-        
+        //mOtrSwitch.setOnCheckedChangeListener(mOtrListener);
         
         mComposeMessage.setOnKeyListener(new OnKeyListener() {
             public boolean onKey(View v, int keyCode, KeyEvent event) {
@@ -592,6 +603,7 @@ public class ChatView extends LinearLayout {
 
         
 
+        /*
         mActionBox = (View)findViewById(R.id.actionBox);
         ImageButton btnActionBox = (ImageButton)findViewById(R.id.btnActionBox);
         btnActionBox.setOnClickListener(new OnClickListener ()
@@ -673,7 +685,7 @@ public class ChatView extends LinearLayout {
             }
             
         });
-        
+        */
         
         initEmoji();
         
@@ -728,7 +740,7 @@ public class ChatView extends LinearLayout {
             public void onClick(View v) {
                  
 
-                mActionBox.setVisibility(View.GONE);
+          //     mActionBox.setVisibility(View.GONE);
                 
                 if (mEmojiPager.getVisibility() == View.GONE)
                     mEmojiPager.setVisibility(View.VISIBLE);
@@ -739,24 +751,6 @@ public class ChatView extends LinearLayout {
         });
 
            
-        
-    }
-    
-  
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-       
-        
-        if (event.getPointerCount() > 1 && event.getAction() == MotionEvent.ACTION_DOWN)
-        {
-            
-
-            ChatView.this.closeChatSession();
-            
-            return true;
-        }
-        
-        return false;
         
     }
 
@@ -829,7 +823,6 @@ public class ChatView extends LinearLayout {
         //mComposeMessage.setText("");
     
         updateWarningView();
-        setDeliveryIcon();
     }
 
     private void updateContactInfo() {
@@ -910,18 +903,11 @@ public class ChatView extends LinearLayout {
         }
     }
 
-    private void setDeliveryIcon() {
-        if (mExpectingDelivery) {
-            mDeliveryIcon.setVisibility(VISIBLE);
-        } else {
-            mDeliveryIcon.setVisibility(GONE);
-        }
-    }
-
     private void deleteChat ()
     {
         Uri chatUri = ContentUris.withAppendedId(Imps.Chats.CONTENT_URI, mLastChatId);
         mActivity.getContentResolver().delete(chatUri,null,null);
+        
     }
     
     public void bindChat(long chatId) {
@@ -930,7 +916,6 @@ public class ChatView extends LinearLayout {
         
         Uri contactUri = ContentUris.withAppendedId(Imps.Contacts.CONTENT_URI, chatId);
         mCursor = mActivity.getContentResolver().query(contactUri, CHAT_PROJECTION, null, null, null);
-        
         
         if (!mCursor.moveToFirst()) {
             if (Log.isLoggable(ImApp.LOG_TAG, Log.DEBUG)) {
@@ -942,6 +927,10 @@ public class ChatView extends LinearLayout {
             updateContactInfo();
             
             mCurrentChatSession = getChatSession();
+            
+            if (mCurrentChatSession == null)
+                mCurrentChatSession = createChatSession();
+            
             if (mCurrentChatSession != null) {
                 isServiceUp = true;
                 
@@ -1079,7 +1068,7 @@ public class ChatView extends LinearLayout {
 
         // This is redundant if there are messages in view, because the cursor requery will update everything.
         // However, if there are no messages, no update will trigger below, and we still want this to update.
-        updateWarningView(true);
+        updateWarningView();
 
         // TODO: async query?
         Cursor cursor = getMessageCursor();
@@ -1092,9 +1081,14 @@ public class ChatView extends LinearLayout {
         return mMessageAdapter == null ? null : mMessageAdapter.getCursor();
     }
 
-    public void closeChatSession() {
+    public void closeChatSession(boolean doDelete) {
         if (getChatSession() != null) {
             try {
+                
+                if (doDelete)
+                    setOTRState(false);
+                
+                updateWarningView();
                 getChatSession().leave();
                 
             } catch (RemoteException e) {
@@ -1104,7 +1098,8 @@ public class ChatView extends LinearLayout {
             }
         } 
         
-        deleteChat();
+        if (doDelete)
+            deleteChat();
                 
     }
 
@@ -1165,7 +1160,30 @@ public class ChatView extends LinearLayout {
         return mLastChatId;
     }
 
+    private IChatSession createChatSession() {
+        
+        IImConnection conn = mApp.getConnection(mProviderId);
 
+        if (conn != null) {
+            try {
+                IChatSessionManager sessionMgr = conn.getChatSessionManager();
+                if (sessionMgr != null) {
+                   
+                    IChatSession session = sessionMgr.createChatSession(Address.stripResource(mRemoteAddress));
+                  
+                    return session;
+                    
+                }
+            } catch (RemoteException e) {
+                
+                mHandler.showServiceErrorAlert(e.getLocalizedMessage());
+                LogCleaner.error(ImApp.LOG_TAG, "send message error",e); 
+            }
+        }
+        
+        return null;
+    }
+ 
     private IChatSession getChatSession() {
         
         IImConnection conn = mApp.getConnection(mProviderId);
@@ -1177,8 +1195,8 @@ public class ChatView extends LinearLayout {
                    
                         IChatSession session = sessionMgr.getChatSession(Address.stripResource(mRemoteAddress));
                         
-                        if (session == null)
-                            session = sessionMgr.createChatSession(Address.stripResource(mRemoteAddress));
+                     //   if (session == null)
+                       //     session = sessionMgr.createChatSession(Address.stripResource(mRemoteAddress));
                       
                         return session;
                     
@@ -1212,7 +1230,7 @@ public class ChatView extends LinearLayout {
     void sendMessage() {
         
         mEmojiPager.setVisibility(View.GONE);
-        mActionBox.setVisibility(View.GONE);
+        //mActionBox.setVisibility(View.GONE);
         
         String msg = mComposeMessage.getText().toString();
 
@@ -1295,21 +1313,15 @@ public class ChatView extends LinearLayout {
         }
     }
 
-    void updateWarningView()
-    {
-        updateWarningView(false);
-    }
-    
-
-    void updateWarningView(boolean overrideUserTouch) {
+    void updateWarningView() {
                 
         int visibility = View.GONE;
         int iconVisibility = View.GONE;
         String message = null;
         boolean isConnected;
 
-        if (overrideUserTouch)
-            mOtrSwitchTouched = false;
+       // if (overrideUserTouch)
+         //   mOtrSwitchTouched = false;
 
         if (this.isGroupChat())
         {
@@ -1321,13 +1333,14 @@ public class ChatView extends LinearLayout {
 
         try {
             IImConnection conn = mApp.getConnection(mProviderId);
-            isConnected = (conn == null) ? false : conn.getState() != ImConnection.SUSPENDED;
+            isConnected = (conn == null) ? false : conn.getState() == ImConnection.LOGGED_IN;
            
         } catch (RemoteException e) {
            
             isConnected = false;
         }
 
+        
         if (isConnected && mCurrentChatSession != null) {
 
             try {
@@ -1354,48 +1367,44 @@ public class ChatView extends LinearLayout {
             else if (mType == Imps.Contacts.TYPE_TEMPORARY) {
                 visibility = View.VISIBLE;
                 message = mContext.getString(R.string.contact_not_in_list_warning, mRemoteNickname);
-            } else if (mPresenceStatus == Imps.Presence.OFFLINE) {
-                visibility = View.VISIBLE;
-                message = mContext.getString(R.string.contact_offline_warning, mRemoteNickname);
+
             } else {
 
-                visibility = View.VISIBLE;
+                visibility = View.GONE;
 
             }
 
             if (mPresenceStatus == Imps.Presence.OFFLINE)
             {
+                visibility = View.VISIBLE;
                 mWarningText.setTextColor(Color.WHITE);
                 mStatusWarningView.setBackgroundColor(Color.DKGRAY);
                 message = mContext.getString(R.string.presence_offline);
-                                
+
             }
             else if (mLastSessionStatus == SessionStatus.PLAINTEXT) {
 
+                
+                visibility = View.GONE;
+                
                     mSendButton.setImageResource(R.drawable.ic_send_holo_light);
                     mComposeMessage.setHint(R.string.compose_hint);
-                    
-                    if (!mOtrSwitchTouched)
-                    { 
-                        mOtrSwitch.setOnCheckedChangeListener(null);
-                        mOtrSwitch.setChecked(false);
-                        mOtrSwitch.setOnCheckedChangeListener(mOtrListener);
-                    }
                     
                     mWarningText.setTextColor(Color.WHITE);
                     mStatusWarningView.setBackgroundResource(R.color.otr_red);
                     message = mContext.getString(R.string.otr_session_status_plaintext);
             }
             else if (mLastSessionStatus == SessionStatus.ENCRYPTED) {
-               
+
+                visibility = View.GONE;
+                
+                mComposeMessage.setHint(R.string.compose_hint_secure);
+
+                
+                mActivity.setSupportProgressBarIndeterminateVisibility(false);
 
                     mSendButton.setImageResource(R.drawable.ic_send_secure);
-                    mComposeMessage.setHint(R.string.compose_hint_secure);
-
-                    mOtrSwitch.setOnCheckedChangeListener(null);
-                    mOtrSwitch.setChecked(true);
-                    mOtrSwitch.setOnCheckedChangeListener(mOtrListener);
-                    
+               
                     try {
                         IOtrChatSession OtrChatSession = mCurrentChatSession.getOtrChatSession();
                                         
@@ -1409,24 +1418,30 @@ public class ChatView extends LinearLayout {
                         }
 
                         String rFingerprint = OtrChatSession.getRemoteFingerprint();
-                        boolean rVerified = OtrChatSession.isKeyVerified(mRemoteAddress);
+                        mIsVerified = OtrChatSession.isKeyVerified(mRemoteAddress);
     
                         if (rFingerprint != null) {
-                            if (!rVerified) {
+                            if (!mIsVerified) {
                                 message = mContext.getString(R.string.otr_session_status_encrypted);
     
                                 mWarningText.setTextColor(Color.BLACK);
                                 mStatusWarningView.setBackgroundResource(R.color.otr_yellow);
+                                
+                                
+                                
                             } else {
                                 message = mContext.getString(R.string.otr_session_status_verified);
     
                                 mWarningText.setTextColor(Color.BLACK);
                                 mStatusWarningView.setBackgroundResource(R.color.otr_green);
+                                
+                                
                             }
                         } else {
                             mWarningText.setTextColor(Color.WHITE);
                             mStatusWarningView.setBackgroundResource(R.color.otr_red);
                             message = mContext.getString(R.string.otr_session_status_plaintext);
+                            
                         }
                         
 
@@ -1439,18 +1454,13 @@ public class ChatView extends LinearLayout {
           
                 mSendButton.setImageResource(R.drawable.ic_send_holo_light);
                 mComposeMessage.setHint(R.string.compose_hint);
-                
-                if (!mOtrSwitchTouched)
-                { 
-                    mOtrSwitch.setOnCheckedChangeListener(null);
-                    mOtrSwitch.setChecked(true);
-                    mOtrSwitch.setOnCheckedChangeListener(mOtrListener);
-                }
-                
+          
                 mWarningText.setTextColor(Color.WHITE);
                 mStatusWarningView.setBackgroundColor(Color.DKGRAY);
                 message = mContext.getString(R.string.otr_session_status_finished);
                 
+
+                visibility = View.VISIBLE;
             }  
 
         } else {
@@ -1459,30 +1469,42 @@ public class ChatView extends LinearLayout {
             mSendButton.setImageResource(R.drawable.ic_send_holo_light);
             mComposeMessage.setHint(R.string.compose_hint);
             
-            if (!mOtrSwitchTouched)
-            {
-                mOtrSwitch.setOnCheckedChangeListener(null);
-                mOtrSwitch.setChecked(false);
-                mOtrSwitch.setOnCheckedChangeListener(mOtrListener);
-            }
-            
+            /*
             visibility = View.VISIBLE;
             iconVisibility = View.VISIBLE;
             mWarningText.setTextColor(Color.WHITE);
-            mWarningText.setBackgroundColor(Color.DKGRAY);
+            mStatusWarningView.setBackgroundColor(Color.DKGRAY);
             message = mContext.getString(R.string.disconnected_warning);
+            */
             
         }
         
         mStatusWarningView.setVisibility(visibility);
+        
         if (visibility == View.VISIBLE) {
             mWarningIcon.setVisibility(iconVisibility);
             mWarningText.setText(message);
         }
         
+        mActivity.updateEncryptionMenuState();
 
     }
 
+    public SessionStatus getOtrSessionStatus ()
+    {
+        return mLastSessionStatus;
+    }
+    
+    public boolean isOtrSessionVerified ()
+    {
+        return mIsVerified;
+    }
+    
+    public int getRemotePresence ()
+    {
+        return mPresenceStatus;
+    }
+    
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         userActionDetected();
@@ -1911,8 +1933,13 @@ public class ChatView extends LinearLayout {
             boolean showDelivery = ((System.currentTimeMillis() - timestamp) > SHOW_DELIVERY_INTERVAL);
             
             DeliveryState deliveryState = DeliveryState.NEUTRAL;
+            
             if (showDelivery && !isDelivered && mExpectingDelivery) {
                 deliveryState = DeliveryState.UNDELIVERED;
+            }
+            else if (isDelivered)
+            {
+                deliveryState = DeliveryState.DELIVERED;
             }
             
             EncryptionState encState = EncryptionState.NONE;
@@ -1968,7 +1995,6 @@ public class ChatView extends LinearLayout {
             if (!mExpectingDelivery && isDelivered) {
                 log("Setting delivery icon");
                 mExpectingDelivery = true;
-                setDeliveryIcon();
                 scheduleRequery(DEFAULT_QUERY_INTERVAL); // FIXME workaround to no refresh
             } else if (cursor.getPosition() == cursor.getCount() - 1) {
                 // if showTimeStamp is false for the latest message, then set a timer to query the
@@ -2039,13 +2065,11 @@ public class ChatView extends LinearLayout {
         
         @Override
         public void onTransferComplete(String from, String url, String type, String filePath) {
-            // TODO have a specific notifier for files / data
-            //String username = from.getScreenName();
-           
             
             File file = new File(filePath);
             
             try {
+                
                 Message msg = Message.obtain(mTransferHandler, 3);            
                 msg.getData().putString("path", file.getCanonicalPath());
                 msg.getData().putString("type", type);
@@ -2092,7 +2116,8 @@ public class ChatView extends LinearLayout {
 
         private boolean mAcceptTransfer = false;
         private boolean mWaitingForResponse = false;
-        
+        private boolean mAcceptAllTransfer = false;
+
         @Override
         public boolean onTransferRequested(String from, String to, String transferUrl) {
             
@@ -2122,44 +2147,67 @@ public class ChatView extends LinearLayout {
             
                 if (msg.what == 1)
                 {
-                    String transferUrl = msg.getData().getString("url");
-                    String transferFrom = msg.getData().getString("from");
-    
-                    String[] path = transferUrl.split("/"); 
-                    String sanitizedPath = SystemServices.sanitize(path[path.length - 1]);
-                    
-                    AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
-    
-                    builder.setTitle("Incoming File");
-                    builder.setMessage(transferFrom + " wants to send you the file '" + sanitizedPath + "'. Accept transfer?");
-    
-                    builder.setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
-    
-                        public void onClick(DialogInterface dialog, int which) {
-                            mAcceptTransfer = true;
-                            mWaitingForResponse = false;
-                            NOTIFY_DOWNLOAD_ID++;
-                            
-                            dialog.dismiss();
-                        }
-    
-                    });
-    
-                    builder.setNegativeButton(R.string.no, new DialogInterface.OnClickListener() {
-    
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            mAcceptTransfer = false;
-                            mWaitingForResponse = false;
-    
-                            
-                            // Do nothing
-                            dialog.dismiss();
-                        }
-                    });
-    
-                    AlertDialog alert = builder.create();
-                    alert.show();
+                    if (mAcceptAllTransfer)
+                    {
+                        mAcceptTransfer = true;
+                        mWaitingForResponse = false;
+                        NOTIFY_DOWNLOAD_ID++;
+                    }
+                    else
+                    {
+                        String transferUrl = msg.getData().getString("url");
+                        String transferFrom = msg.getData().getString("from");
+        
+                        String[] path = transferUrl.split("/"); 
+                        String sanitizedPath = SystemServices.sanitize(path[path.length - 1]);
+                        
+                        AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
+        
+                        builder.setTitle(mContext.getString(R.string.file_transfer));
+                        builder.setMessage(transferFrom + ' ' + mContext.getString(R.string.wants_to_send_you_the_file) 
+                        + " '" + sanitizedPath + "'. " + mContext.getString(R.string.accept_transfer_));
+        
+                        builder.setNeutralButton(R.string.button_yes_accept_all,new DialogInterface.OnClickListener() {
+        
+                            public void onClick(DialogInterface dialog, int which) {
+                                mAcceptAllTransfer = true;
+                                mAcceptTransfer = true;
+                                mWaitingForResponse = false;
+                                NOTIFY_DOWNLOAD_ID++;
+                                
+                                dialog.dismiss();
+                            }
+        
+                        });
+                        
+                        builder.setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
+        
+                            public void onClick(DialogInterface dialog, int which) {
+                                mAcceptTransfer = true;
+                                mWaitingForResponse = false;
+                                NOTIFY_DOWNLOAD_ID++;
+                                
+                                dialog.dismiss();
+                            }
+        
+                        });
+        
+                        builder.setNegativeButton(R.string.no, new DialogInterface.OnClickListener() {
+        
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                mAcceptTransfer = false;
+                                mWaitingForResponse = false;
+        
+                                
+                                // Do nothing
+                                dialog.dismiss();
+                            }
+                        });
+        
+                        AlertDialog alert = builder.create();
+                        alert.show();
+                    }
                 }
                 else if (msg.what == 2) //progress update
                 {
@@ -2172,16 +2220,18 @@ public class ChatView extends LinearLayout {
                                 (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
                         mBuilder = new NotificationCompat.Builder(mContext);
                     
-                        mBuilder.setContentTitle("ChatSecure Transfer");
-                        mBuilder.setTicker("Transfer in progress: " + progressText);
+                        mBuilder.setContentTitle(mContext.getString(R.string.file_transfer));
+                        mBuilder.setTicker(mContext.getString(R.string.transfer_in_progress) + ": " + progressText);
                    
-                        mBuilder .setSmallIcon(R.drawable.ic_secure_xfer);                    
+                        mBuilder .setSmallIcon(R.drawable.ic_secure_xfer);                   
+                        
+                        mBuilder.setContentIntent(PendingIntent.getActivity(mActivity,0,new Intent(mContext,NewChatActivity.class),0));
                         
                     }
                     
                     
                    
-                    mBuilder.setContentText("Transfer in progress: " + progressText);
+                    mBuilder.setContentText(mContext.getString(R.string.transfer_in_progress) + ": " + progressText);
                     mBuilder.setProgress(100, progressValue, false);
                     
                     
@@ -2193,12 +2243,27 @@ public class ChatView extends LinearLayout {
                     String filePath = msg.getData().getString("path");
                     String fileType = msg.getData().getString("type");
                     
+                    if (fileType != null && fileType.startsWith("audio"))
+                    {
+                        MediaPlayer mp = new MediaPlayer();
+                        try {
+                            mp.setDataSource(filePath);
+                       
+                            mp.prepare();
+                            mp.start();
+                        
+                        } catch (IOException e) {
+                            // TODO Auto-generated catch block
+                            e.printStackTrace();
+                        }
+                    }
+                    
                     if (mNotifyManager == null)
                     {
                         mNotifyManager =
                                 (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
                         mBuilder = new NotificationCompat.Builder(mContext);
-                        mBuilder.setContentTitle("ChatSecure Transfer");
+                        mBuilder.setContentTitle(mContext.getString(R.string.file_transfer));
                    
                         mBuilder .setSmallIcon(R.drawable.ic_secure_xfer);  
                         
@@ -2242,7 +2307,7 @@ public class ChatView extends LinearLayout {
                     mBuilder.setContentIntent(contentIntent);
                     mBuilder.setLights(0xff00ff00, 300, 1000);
                     
-                    String status = "Transfer Complete: " + sanitizedPath;
+                    String status = mContext.getString(R.string.transfer_complete) + ": " + sanitizedPath;
                     
                     mBuilder.setContentText(status)                    
                     // Removes the progress bar
@@ -2283,6 +2348,7 @@ public class ChatView extends LinearLayout {
             bindChat(mLastChatId);
             startListening();
         }
+        
     }
 
     public void beSocial() {

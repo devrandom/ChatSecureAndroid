@@ -32,6 +32,7 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -1048,8 +1049,6 @@ public class XmppConnection extends ImConnection implements CallbackHandler {
             mConfig.setNotMatchingDomainCheckEnabled(true);
             mConfig.setSelfSignedCertificateEnabled(false);
             
-            // Per XMPP specs, cert must match domain, not SRV lookup result.  Otherwise, DNS spoofing
-            // can enable MITM.
             if (sslContext == null)
             {
                 sslContext = SSLContext.getInstance(SSLCONTEXT_TYPE);
@@ -1076,7 +1075,21 @@ public class XmppConnection extends ImConnection implements CallbackHandler {
             // if it finds a cert, still use it, but don't check anything since 
             // TLS errors are not expected by the user
             mConfig.setSecurityMode(SecurityMode.enabled);
-            mConfig.setSocketFactory(new DummySSLSocketFactory(getTrustManager()));
+
+            if (sslContext == null)
+            {
+                sslContext = SSLContext.getInstance(SSLCONTEXT_TYPE);
+                
+                mTrustManager = getDummyTrustManager ();
+        
+                SecureRandom mSecureRandom = new java.security.SecureRandom();
+                
+                sslContext.init(null, new javax.net.ssl.TrustManager[] { mTrustManager },
+                        mSecureRandom);
+              
+                sslContext.getDefaultSSLParameters().setCipherSuites(XMPPCertPins.SSL_IDEAL_CIPHER_SUITES);
+            }
+            mConfig.setCustomSSLContext(sslContext);
 
             if (!allowPlainAuth)
                 SASLAuthentication.unsupportSASLMechanism("PLAIN");
@@ -1289,12 +1302,36 @@ public class XmppConnection extends ImConnection implements CallbackHandler {
     {
         if (mTrustManager == null)
         {
-            PinningTrustManager trustPinning = new PinningTrustManager(SystemKeyStore.getInstance(aContext),XMPPCertPins.PINLIST, 0);
+            PinningTrustManager trustPinning = new PinningTrustManager(SystemKeyStore.getInstance(aContext),XMPPCertPins.getPinList(), 0);
         
             mTrustManager = new MemorizingTrustManager(aContext, trustPinning, null);
+           
+           
+        }
             
-           
-           
+        return mTrustManager;
+    }
+
+    public synchronized X509TrustManager getDummyTrustManager ()
+    {
+        if (mTrustManager == null)
+        {
+            mTrustManager = new X509TrustManager() {
+                @Override
+                public void checkClientTrusted(X509Certificate[] arg0, String arg1)
+                        throws CertificateException {
+                }
+
+                @Override
+                public void checkServerTrusted(X509Certificate[] arg0, String arg1)
+                        throws CertificateException {
+                }
+
+                @Override
+                public X509Certificate[] getAcceptedIssuers() {
+                    return new X509Certificate[0];
+                }
+            };
         }
             
         return mTrustManager;
@@ -1606,7 +1643,7 @@ public class XmppConnection extends ImConnection implements CallbackHandler {
         */
         
         // Runs in executor thread
-        private synchronized void do_loadContactLists() {
+        private void do_loadContactLists() {
    
             debug(TAG, "load contact lists");
 
@@ -1677,14 +1714,13 @@ public class XmppConnection extends ImConnection implements CallbackHandler {
             }
             
             if (cl == null)
-            {
+            {    
                 String generalGroupName = mContext.getString(R.string.buddies);
              
                 Collection<Contact> contacts = new ArrayList<Contact>();
                 XmppAddress groupAddress = new XmppAddress(generalGroupName); 
            
                 cl = new ContactList(groupAddress,generalGroupName, true, contacts, this);
-
                 
                 notifyContactListCreated(cl);
             }
@@ -1931,7 +1967,7 @@ public class XmppConnection extends ImConnection implements CallbackHandler {
 
                 // If contact exists locally, don't create another copy
                 
-                if (!containsContact(contact))
+                if (!list.containsContact(contact))
                     notifyContactListUpdated(list, ContactListListener.LIST_CONTACT_ADDED, contact);
                 else
                     debug(TAG, "skip adding existing contact locally " + contact.getName());

@@ -33,6 +33,7 @@ import info.guardianproject.otr.app.im.engine.Invitation;
 import info.guardianproject.otr.app.im.engine.InvitationListener;
 import info.guardianproject.otr.app.im.engine.Presence;
 import info.guardianproject.otr.app.im.provider.Imps;
+import info.guardianproject.util.Debug;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -138,7 +139,16 @@ public class ImConnectionAdapter extends info.guardianproject.otr.app.im.IImConn
         return builder.build();
     }
 
-    public void login(String passwordTemp, boolean autoLoadContacts, boolean retry) {
+    public void login(final String passwordTemp, final boolean autoLoadContacts, final boolean retry) {
+        Debug.wrapExceptions(new Runnable() {
+            @Override
+            public void run() {
+                do_login(passwordTemp, autoLoadContacts, retry);
+            }
+        });
+    }
+    
+    public void do_login(String passwordTemp, boolean autoLoadContacts, boolean retry) {
         
         mAutoLoadContacts = autoLoadContacts;
         mConnectionState = ImConnection.LOGGING_IN;
@@ -418,13 +428,7 @@ public class ImConnectionAdapter extends info.guardianproject.otr.app.im.IImConn
                 
                 loadSavedPresence();
 
-            } else if (state == ImConnection.LOGGING_OUT) {
-                // The engine has started to logout the connection, remove it
-                // from the active connection list.
-                mService.removeConnection(ImConnectionAdapter.this);
             } else if (state == ImConnection.DISCONNECTED) {
-                mService.removeConnection(ImConnectionAdapter.this);
-
                 clearSessionCookie(cr);
                 // mContactListManager might still be null if we fail
                 // immediately in loginAsync (say, an invalid host URL)
@@ -453,6 +457,12 @@ public class ImConnectionAdapter extends info.guardianproject.otr.app.im.IImConn
                 }
             }
             mRemoteConnListeners.finishBroadcast();
+            
+            if (state == ImConnection.DISCONNECTED) {
+                // NOTE: if this logic is changed, the logic in ImApp.MyConnListener must be changed to match
+                mService.removeConnection(ImConnectionAdapter.this);
+
+            }
         }
 
         public void onUserPresenceUpdated() {

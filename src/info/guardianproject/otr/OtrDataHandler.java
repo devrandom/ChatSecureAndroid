@@ -1,11 +1,13 @@
 package info.guardianproject.otr;
 
 import info.guardianproject.otr.app.im.IDataListener;
+import info.guardianproject.otr.app.im.app.ImApp;
 import info.guardianproject.otr.app.im.engine.Address;
 import info.guardianproject.otr.app.im.engine.ChatSession;
 import info.guardianproject.otr.app.im.engine.DataHandler;
 import info.guardianproject.otr.app.im.engine.Message;
 import info.guardianproject.util.Debug;
+import info.guardianproject.util.LogCleaner;
 import info.guardianproject.util.SystemServices;
 
 import java.io.ByteArrayInputStream;
@@ -22,6 +24,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
+
+import net.java.otr4j.session.SessionStatus;
 
 import org.apache.http.Header;
 import org.apache.http.HeaderIterator;
@@ -84,9 +88,25 @@ public class OtrDataHandler implements DataHandler {
     private ChatSession mChatSession;
 
     private IDataListener mDataListener;
+    private SessionStatus mOtrStatus;
 
     public OtrDataHandler(ChatSession chatSession) {
         this.mChatSession = chatSession;
+    }
+
+    public void onOtrStatusChanged(SessionStatus status) {
+        mOtrStatus = status;
+        if (status == SessionStatus.ENCRYPTED) {
+            retryRequests();
+        }
+    }
+    
+    private void retryRequests() {
+        // Resend all unfilled requests
+        for (Request request: requestCache.asMap().values()) {
+            if (!request.isSeen())
+                sendRequest(request);
+        }
     }
 
     public void setDataListener (IDataListener dataListener)
@@ -190,18 +210,19 @@ public class OtrDataHandler implements DataHandler {
             // TODO ask user to confirm we want this
             boolean accept = false;
             
-            try {
-                accept = mDataListener.onTransferRequested(requestThem.getAddress(),requestUs.getAddress(),transfer.url);
+            if (mDataListener != null)
+            {
+                try {
+                    accept = mDataListener.onTransferRequested(requestThem.getAddress(),requestUs.getAddress(),transfer.url);
+                    
+                    if (accept)
+                        transfer.perform();
+                    
+                } catch (RemoteException e) {
+                    LogCleaner.error(ImApp.LOG_TAG, "error approving OTRDATA transfer request", e);
+                }
                 
-                if (accept)
-                    transfer.perform();
-                
-            } catch (RemoteException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
             }
-            
-            
             
         } else if (requestMethod.equals("GET") && url.startsWith(URI_PREFIX_OTR_IN_BAND)) {
             debug("incoming GET " + url);
@@ -214,6 +235,8 @@ public class OtrDataHandler implements DataHandler {
                     sendResponse(requestUs, 400, "No such offer made", uid, EMPTY_BODY);
                     return;
                 }
+                
+                offer.seen(); // in case we don't see a response to underlying request, but peer still proceeds
                 
                 if (!req.containsHeader("Range"))
                 {
@@ -246,19 +269,22 @@ public class OtrDataHandler implements DataHandler {
                 FileInputStream is = new FileInputStream(fileGet);                
                 readIntoByteBuffer(byteBuffer, is, start, end);
                 
-                float percent = ((float)end) / ((float)fileGet.length());
-                
-                if (percent < .98f)
+                if (mDataListener != null)
                 {
-                    mDataListener.onTransferProgress(requestThem.getAddress(), offer.getUri(), 
-                        percent);
-                }
-                else
-                {
-                    String mimeType = null;
-                    if (req.getFirstHeader("Mime-Type") != null)
-                        mimeType = req.getFirstHeader("Mime-Type").getValue();                    
-                    mDataListener.onTransferComplete(requestThem.getAddress(), offer.getUri(), mimeType, offer.getUri());
+                    float percent = ((float)end) / ((float)fileGet.length());
+                    
+                    if (percent < .98f)
+                    {
+                        mDataListener.onTransferProgress(requestThem.getAddress(), offer.getUri(), 
+                            percent);
+                    }
+                    else
+                    {
+                        String mimeType = null;
+                        if (req.getFirstHeader("Mime-Type") != null)
+                            mimeType = req.getFirstHeader("Mime-Type").getValue();                    
+                        mDataListener.onTransferComplete(requestThem.getAddress(), offer.getUri(), mimeType, offer.getUri());
+                    }
                 }
                 
             } catch (UnsupportedEncodingException e) {
@@ -374,7 +400,7 @@ public class OtrDataHandler implements DataHandler {
         byte[] data = outBuf.getOutput();
         Message message = new Message("");
         message.setFrom(us);
-        debug("send response");
+        debug("send response " + statusString + " for " + uid);
         mChatSession.sendDataAsync(message, true, data);
     }
 
@@ -432,21 +458,26 @@ public class OtrDataHandler implements DataHandler {
 
                         File fileShare = writeDataToStorage(transfer.url, data);
                         
-                        mDataListener.onTransferComplete(
+                        if (mDataListener != null)
+                            mDataListener.onTransferComplete(
                                 peerAddress,
                                 transfer.url,
                                 transfer.type,
                                 fileShare.getCanonicalPath());
                     } else {
-                        mDataListener.onTransferFailed(
-                                peerAddress,
-                                transfer.url,
-                                "checksum");
+                        if (mDataListener != null)
+                            mDataListener.onTransferFailed(
+                                    peerAddress,
+                                    transfer.url,
+                                    "checksum");
                         Log.e(TAG, "Wrong checksum for file len= " + data.length + " sha1=" + sha1sum(data));
                     }
                 } else {
-                    mDataListener.onTransferProgress(peerAddress, transfer.url,
+                    if (mDataListener != null)
+                        mDataListener.onTransferProgress(peerAddress, transfer.url, 
                             transfer.getPrecent());
+                    transfer.perform();
+                    debug("Progress " + transfer.chunksReceived + " / " + transfer.chunks);
                 }
             } else if (request.url.startsWith("chatsecure:")) {
                 StringBuffer headers = new StringBuffer();
@@ -519,43 +550,57 @@ public class OtrDataHandler implements DataHandler {
         headers.put("File-Hash-SHA1", sha1sum(byteBuffer.toByteArray()));
         String[] paths = localUri.split("/");
         String url = URI_PREFIX_OTR_IN_BAND + SystemServices.sanitize(paths[paths.length - 1]);
-        Request request = new Request("OFFER", url);
-        offerCache.put(url, new Offer(localUri));
-        sendRequest(us, "OFFER", url, null, headers, EMPTY_BODY, request);
+
+        Request request = new Request("OFFER", us, url, headers);
+        offerCache.put(url, new Offer(localUri, request));
+        sendRequest(request);
     }
 
     public Request performGetData(Address us, String url, Map<String, String> headers, int start, int end) {
         String rangeSpec = "bytes=" + start + "-" + end;
-        debug("Getting range " + rangeSpec);
         headers.put("Range", rangeSpec);
-        Request requestMemo = new Request("GET", url, start, end);
+        Request request = new Request("GET", us, url, start, end, headers, EMPTY_BODY);
 
-        sendRequest(us, "GET", url, null, headers, EMPTY_BODY, requestMemo);
-        return requestMemo;
+        sendRequest(request);
+        return request;
     }
 
     static class Offer {
         private String mUri;
+        private Request request;
 
-        public Offer(String uri) {
+        public Offer(String uri, Request request) {
             this.mUri = uri;
+            this.request = request;
         }
         
         public String getUri() {
             return mUri;
         }
+
+        public Request getRequest() {
+            return request;
+        }
+        
+        public void seen() {
+            request.seen();
+        }
     }
     
     static class Request {
-        public Request(String method, String url, int start, int end) {
+
+        public Request(String method, Address us, String url, int start, int end, Map<String, String> headers, byte[] body) {
             this.method = method;
             this.url = url;
             this.start = start;
             this.end = end;
+            this.us = us;
+            this.headers = headers;
+            this.body = body;
         }
 
-        public Request(String method, String url) {
-            this(method, url, -1, -1);
+        public Request(String method, Address us, String url, Map<String, String> headers) {
+            this(method, us, url, -1, -1, headers, null);
         }
         
         public String method;
@@ -564,6 +609,9 @@ public class OtrDataHandler implements DataHandler {
         public int end;
         public byte[] data;
         public boolean seen = false;
+        public Address us;
+        public Map<String, String> headers;
+        public byte[] body;
         
         public boolean isSeen() {
             return seen;
@@ -650,23 +698,26 @@ public class OtrDataHandler implements DataHandler {
     Cache<String, Request> requestCache = CacheBuilder.newBuilder().maximumSize(100).build();
     Cache<String, Transfer> transferCache = CacheBuilder.newBuilder().maximumSize(100).build();
     
-    private void sendRequest(Address us, String method, String url, String uid, Map<String, String> headers, byte[] body, Request requestMemo) {
+    private void sendRequest(Request request) {
+        String uid = UUID.randomUUID().toString();
+        sendRequest(request, uid);
+    }
+    
+    private void sendRequest(Request request, String uid) {
         MemorySessionOutputBuffer outBuf = new MemorySessionOutputBuffer();
         HttpMessageWriter writer = new HttpRequestWriter(outBuf, lineFormatter, params);
-        HttpMessage req = new BasicHttpRequest(method, url, PROTOCOL_VERSION);
-        if (uid == null)
-            uid = UUID.randomUUID().toString();
+        HttpMessage req = new BasicHttpRequest(request.method, request.url, PROTOCOL_VERSION);
         req.addHeader("Request-Id", uid);
-        if (headers != null) {
-            for (Entry<String, String> entry : headers.entrySet()) {
+        if (request.headers != null) {
+            for (Entry<String, String> entry : request.headers.entrySet()) {
                 req.addHeader(entry.getKey(), entry.getValue());
             }
         }
         
         try {
             writer.write(req);
-            if (body != null)
-                outBuf.write(body);
+            if (request.body != null)
+                outBuf.write(request.body);
             outBuf.flush();
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -675,9 +726,12 @@ public class OtrDataHandler implements DataHandler {
         }
         byte[] data = outBuf.getOutput();
         Message message = new Message("");
-        message.setFrom(us);
-        debug("send request " + method + " " + url);
-        requestCache.put(uid, requestMemo);
+        message.setFrom(request.us);
+        if (req.containsHeader("Range"))
+            debug("send request " + request.method + " " + request.url + " " + req.getFirstHeader("Range"));
+        else
+            debug("send request " + request.method + " " + request.url);
+        requestCache.put(uid, request);
         mChatSession.sendDataAsync(message, false, data);
     }
     
@@ -711,7 +765,8 @@ public class OtrDataHandler implements DataHandler {
         if (headersString != null)
             naiveHeadersParse(headersString, headers);
         headers.put("Request-Id", requestId);
-        sendRequest(us, method, uri, requestId, headers, content, new Request("OFFER", uri));
+        Request request = new Request("OFFER", us, uri, -1, -1, headers, content);
+        sendRequest(request, requestId);
     }
 
     private void naiveHeadersParse(String headersString, Map<String, String> headers) {
