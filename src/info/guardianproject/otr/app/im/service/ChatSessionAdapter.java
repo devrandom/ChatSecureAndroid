@@ -694,6 +694,10 @@ public class ChatSessionAdapter extends info.guardianproject.otr.app.im.IChatSes
 
         @Override
         public boolean onIncomingResponse(String uri, String requestId, String headers, byte[] body) {
+            if (uri.equals("chatsecure:/discover")) {
+                // TODO check errors
+                return true;
+            }
             PluggerResponse response = new PluggerResponse();
             response.setUri(uri);
             response.setAccountId(mLocalUser.getAddress());

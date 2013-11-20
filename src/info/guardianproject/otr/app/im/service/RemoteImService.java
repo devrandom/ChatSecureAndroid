@@ -313,7 +313,8 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
                 mDataPlugger.sendResponseToRemote(response);
                 return 0;
             } else {
-                Log.e(Api.DATAPLUG_TAG, "unknown action " + intent.getAction());
+                //Log.e(Api.DATAPLUG_TAG, "unknown action " + intent.getAction());
+                //TODO merge with onStart
             }
         }
         return super.onStartCommand(intent, flags, startId);

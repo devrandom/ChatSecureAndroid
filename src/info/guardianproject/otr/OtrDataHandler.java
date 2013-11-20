@@ -765,7 +765,7 @@ public class OtrDataHandler implements DataHandler {
         if (headersString != null)
             naiveHeadersParse(headersString, headers);
         headers.put("Request-Id", requestId);
-        Request request = new Request("OFFER", us, uri, -1, -1, headers, content);
+        Request request = new Request(method, us, uri, -1, -1, headers, content);
         sendRequest(request, requestId);
     }
 
