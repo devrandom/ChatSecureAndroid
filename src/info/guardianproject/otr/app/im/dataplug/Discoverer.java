@@ -53,7 +53,7 @@ public class Discoverer {
     /** Initiate discovery of local DataPlugs */
     public void discoverDataPlugs() {
         Intent intent = new Intent(Api.ACTION_DISCOVER);
-
+        
         PackageManager pm = mContext.getPackageManager();
         List<ResolveInfo> list = pm.queryIntentServices(intent, 0);
         Log.i(Api.DATAPLUG_TAG, "dataplugs:");
@@ -68,6 +68,9 @@ public class Discoverer {
             discoverIntent.putExtra(Api.EXTRA_TOKEN, token);
             mContext.startService(discoverIntent);
         }
+        // invoke authorization for new plugins
+        AuthorizationActivity.startActivity(mContext, list);
+        
         Log.i(Api.DATAPLUG_TAG, "dataplugs end.");
     }
 

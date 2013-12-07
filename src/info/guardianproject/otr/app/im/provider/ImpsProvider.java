@@ -75,6 +75,7 @@ public class ImpsProvider extends ContentProvider {
     private static final String TABLE_IN_MEMORY_MESSAGES = "inMemoryMessages";
     private static final String TABLE_ACCOUNT_STATUS = "accountStatus";
     private static final String TABLE_BRANDING_RESOURCE_MAP_CACHE = "brandingResMapCache";
+    private static final String TABLE_DATAPLUGS = "dataplugs";
 
     // tables for mcs and rmq
     private static final String TABLE_OUTGOING_RMQ_MESSAGES = "outgoingRmqMessages";
@@ -83,7 +84,7 @@ public class ImpsProvider extends ContentProvider {
 
     private static final String ENCRYPTED_DATABASE_NAME = "impsenc.db";
     private static final String UNENCRYPTED_DATABASE_NAME = "imps.db";
-    private static final int DATABASE_VERSION = 102;
+    private static final int DATABASE_VERSION = 103;
 
     protected static final int MATCH_PROVIDERS = 1;
     protected static final int MATCH_PROVIDERS_BY_ID = 2;
@@ -149,6 +150,7 @@ public class ImpsProvider extends ContentProvider {
     protected static final int MATCH_ACCOUNTS_STATUS = 104;
     protected static final int MATCH_ACCOUNT_STATUS = 105;
     protected static final int MATCH_BRANDING_RESOURCE_MAP_CACHE = 106;
+    protected static final int MATCH_DATAPLUG = 107;
 
     // mcs url matcher
     protected static final int MATCH_OUTGOING_RMQ_MESSAGES = 200;
@@ -337,6 +339,11 @@ public class ImpsProvider extends ContentProvider {
 
             db.execSQL("create TABLE " + TABLE_S2D_RMQ_IDS + " (" + "_id INTEGER PRIMARY KEY,"
                        + "rmq_id INTEGER" + ");");
+            
+            // dataplugs
+            db.execSQL("create TABLE " + TABLE_DATAPLUGS + " ("
+                    + "_id INTEGER PRIMARY KEY," + "package STRING,"
+                    + "display_name STRING," + "authorization INTEGER" + ");");
         }
 
         @Override
@@ -464,10 +471,8 @@ public class ImpsProvider extends ContentProvider {
                     db.endTransaction();
                 }
 
-                return;
             case 101:
                 // This was a no-op upgrade when we added the encrypted DB option
-                return;
             case 1:
                 if (newVersion <= 100) {
                     return;
@@ -484,6 +489,26 @@ public class ImpsProvider extends ContentProvider {
                     db.endTransaction();
                 }
 
+            case 102:
+                if (newVersion <= 102) {
+                    return;
+                }
+
+                db.beginTransaction();
+                try {
+                    // add dataplugs
+                    db.execSQL("create TABLE " + TABLE_DATAPLUGS + " ("
+                            + "_id INTEGER PRIMARY KEY," + "package STRING,"
+                            + "display_name STRING," + "authorization INTEGER" + ");");
+                    db.setTransactionSuccessful();
+                } catch (Throwable ex) {
+                    LogCleaner.error(LOG_TAG, ex.getMessage(), ex);
+                    break; // force to destroy all old data;
+                } finally {
+                    db.endTransaction();
+                }
+                
+                //
                 return;
             }
 
@@ -504,6 +529,7 @@ public class ImpsProvider extends ContentProvider {
             db.execSQL("DROP TABLE IF EXISTS " + TABLE_BRANDING_RESOURCE_MAP_CACHE);
             db.execSQL("DROP TABLE IF EXISTS " + TABLE_MESSAGES);
             db.execSQL("DROP TABLE IF EXISTS " + TABLE_CHATS);
+            db.execSQL("DROP TABLE IF EXISTS " + TABLE_DATAPLUGS);
 
             // mcs/rmq stuff
             db.execSQL("DROP TABLE IF EXISTS " + TABLE_OUTGOING_RMQ_MESSAGES);
@@ -1011,6 +1037,7 @@ public class ImpsProvider extends ContentProvider {
         mUrlMatcher.addURI(authority, "accountStatus/#", MATCH_ACCOUNT_STATUS);
 
         mUrlMatcher.addURI(authority, "brandingResMapCache", MATCH_BRANDING_RESOURCE_MAP_CACHE);
+        mUrlMatcher.addURI(authority, "dataplugs", MATCH_DATAPLUG);
     }
 
     private void setupMcsUrlMatchers(String authority) {
@@ -1515,6 +1542,10 @@ public class ImpsProvider extends ContentProvider {
 
         case MATCH_BRANDING_RESOURCE_MAP_CACHE:
             qb.setTables(TABLE_BRANDING_RESOURCE_MAP_CACHE);
+            break;
+
+        case MATCH_DATAPLUG:
+            qb.setTables(TABLE_DATAPLUGS);
             break;
 
         // mcs and rmq queries
@@ -2529,6 +2560,13 @@ public class ImpsProvider extends ContentProvider {
             }
             break;
 
+        case MATCH_DATAPLUG:
+            rowID = db.insert(TABLE_DATAPLUGS, null, initialValues);
+            if (rowID > 0) {
+                resultUri = Uri.parse(Imps.Dataplugs.CONTENT_URI + "/" + rowID);
+            }
+            break;
+
         // mcs/rmq stuff
         case MATCH_OUTGOING_RMQ_MESSAGES:
             rowID = db.insert(TABLE_OUTGOING_RMQ_MESSAGES, null, initialValues);
@@ -3178,6 +3216,10 @@ public class ImpsProvider extends ContentProvider {
 
         case MATCH_BRANDING_RESOURCE_MAP_CACHE:
             tableToChange = TABLE_BRANDING_RESOURCE_MAP_CACHE;
+            break;
+
+        case MATCH_DATAPLUG:
+            tableToChange = TABLE_DATAPLUGS;
             break;
 
         // mcs/rmq stuff

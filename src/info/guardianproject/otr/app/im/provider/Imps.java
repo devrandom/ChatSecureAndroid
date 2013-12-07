@@ -2537,4 +2537,26 @@ public class Imps {
         }
     }
 
+    /**
+     * Columns for IM branding resource map cache table. This table caches the
+     * result of loading the branding resources to speed up IM landing page
+     * start.
+     */
+    public interface DataplugsColumns {
+        /** The package <P>Type: STRING</P> */
+        String PACKAGE = "package";
+        /** The package display name <P>Type: STRING</P> */
+        String DISPLAY_NAME = "display_name";
+        /** Auth status <P>Type: INTEGER</P> */
+        String AUTHORIZATION = "authorization";  // <<<<<<<< enum ???
+    }
+    
+    /** The table for caching the result of loading IM branding resources. */
+    public static final class Dataplugs implements BaseColumns, DataplugsColumns {
+        /** The content:// style URL for this table. */
+        public static final Uri CONTENT_URI = Uri
+                .parse("content://info.guardianproject.otr.app.im.provider.Imps/dataplugs");
+    }
+
+
 }
