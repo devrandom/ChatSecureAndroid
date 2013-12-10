@@ -20,8 +20,12 @@ import info.guardianproject.cacheword.CacheWordActivityHandler;
 import info.guardianproject.cacheword.ICacheWordSubscriber;
 import info.guardianproject.cacheword.SQLCipherOpenHelper;
 import info.guardianproject.otr.app.im.R;
+import info.guardianproject.otr.app.im.dataplug.AuthorizationActivity;
 import info.guardianproject.otr.app.im.engine.ImConnection;
 import info.guardianproject.otr.app.im.provider.Imps;
+
+import java.util.List;
+
 import net.hockeyapp.android.UpdateManager;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -29,12 +33,14 @@ import android.content.ContentUris;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ResolveInfo;
 import android.content.res.Configuration;
 import android.database.Cursor;
 import android.net.Uri;
 import android.net.Uri.Builder;
 import android.os.Bundle;
 import android.os.Message;
+import android.os.RemoteException;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.widget.Toast;
@@ -76,6 +82,8 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
     static final int ACCOUNT_PRESENCE_STATUS = 9;
     static final int ACCOUNT_CONNECTION_STATUS = 10;
     
+    private static final int REQUEST_CODE_DATAPLUG_AUTH = 1000;
+    
     private SharedPreferences mPrefs = null;
     
     private CacheWordActivityHandler mCacheWord = null;
@@ -86,6 +94,7 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
         super.onCreate(savedInstanceState);
 
         mApp = (ImApp)getApplication();
+        mApp.startImServiceIfNeed();
         mHandler = new MyHandler(this);
 
         
@@ -209,8 +218,30 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
         if (mCacheWord != null)
             mCacheWord.onResume();
     }
+    
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        switch( requestCode ) {
+        // coming back from dataplug authorization
+        case REQUEST_CODE_DATAPLUG_AUTH:
+            if( resultCode != RESULT_OK ) {
+                throw new RuntimeException("Dataplug Auth failed " + resultCode);
+            }
+            // This call returned early first time, because we had unauthorized dataplugs.
+            // Call it again so it can complete.  It will invoke the accounts activity and finish().
+            doOnResume();
+            break;
+        }
+    }
 
     private void doOnResume() {
+        // check if we have any unauthorized dataplugs and short-circuit to 
+        // authorization activity if so 
+        if (handleDataplugs())
+            return;
+
         mHandler.registerForBroadcastEvents();
 
         int countSignedIn = accountsSignedIn();
@@ -446,6 +477,19 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
         startActivity(new Intent(getBaseContext(), AccountListActivity.class));
         finish();
     }
+
+    // Returns true if the AuthorizationActivity had to be invoked for one or more dataplugs
+    private boolean handleDataplugs() {
+        // invoke authorization for new plugins
+        List<ResolveInfo> list;
+        try {
+            list = (List<ResolveInfo>)mApp.getRemoteImService().discoverDataplugs();
+        } catch (RemoteException e) {
+            throw new RuntimeException(e);
+        }
+
+        return AuthorizationActivity.startActivity(this, list, REQUEST_CODE_DATAPLUG_AUTH);
+    }
     
     Intent getEditAccountIntent() {
         Intent intent = new Intent(Intent.ACTION_EDIT, ContentUris.withAppendedId(
@@ -564,7 +608,13 @@ public class WelcomeActivity extends ThemeableActivity implements ICacheWordSubs
         String pkey = (key != null) ? SQLCipherOpenHelper.encodeRawKey(key) : "";
         
         if (cursorUnlocked(pkey, allowCreate)) {
-            doOnResume();
+            mApp.callWhenServiceConnected(mHandler, new Runnable() {
+                @Override
+                public void run() {
+                    doOnResume();
+                }
+            });
+
             return true;
         } else {
             return false;

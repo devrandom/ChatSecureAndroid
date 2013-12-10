@@ -150,7 +150,8 @@ public class ImpsProvider extends ContentProvider {
     protected static final int MATCH_ACCOUNTS_STATUS = 104;
     protected static final int MATCH_ACCOUNT_STATUS = 105;
     protected static final int MATCH_BRANDING_RESOURCE_MAP_CACHE = 106;
-    protected static final int MATCH_DATAPLUG = 107;
+    protected static final int MATCH_DATAPLUG = 110;
+    protected static final int MATCH_DATAPLUG_BY_PACKAGE = 111;
 
     // mcs url matcher
     protected static final int MATCH_OUTGOING_RMQ_MESSAGES = 200;
@@ -1038,6 +1039,7 @@ public class ImpsProvider extends ContentProvider {
 
         mUrlMatcher.addURI(authority, "brandingResMapCache", MATCH_BRANDING_RESOURCE_MAP_CACHE);
         mUrlMatcher.addURI(authority, "dataplugs", MATCH_DATAPLUG);
+        mUrlMatcher.addURI(authority, "dataplugsByPackage/*", MATCH_DATAPLUG_BY_PACKAGE);
     }
 
     private void setupMcsUrlMatchers(String authority) {
@@ -3218,7 +3220,10 @@ public class ImpsProvider extends ContentProvider {
             tableToChange = TABLE_BRANDING_RESOURCE_MAP_CACHE;
             break;
 
-        case MATCH_DATAPLUG:
+        case MATCH_DATAPLUG_BY_PACKAGE:
+            String pkg = url.getPathSegments().get(1);
+            appendWhere(whereClause, Imps.Dataplugs.PACKAGE, "=", pkg);
+
             tableToChange = TABLE_DATAPLUGS;
             break;
 
@@ -3571,6 +3576,13 @@ public class ImpsProvider extends ContentProvider {
 
         case MATCH_S2D_RMQ_IDS:
             tableToChange = TABLE_S2D_RMQ_IDS;
+            break;
+            
+        case MATCH_DATAPLUG_BY_PACKAGE:
+            String pkg = url.getPathSegments().get(1);
+            appendWhere(whereClause, Imps.Dataplugs.PACKAGE, "=", pkg);
+
+            tableToChange = TABLE_DATAPLUGS;
             break;
 
         default:

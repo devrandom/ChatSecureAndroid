@@ -2545,10 +2545,26 @@ public class Imps {
     public interface DataplugsColumns {
         /** The package <P>Type: STRING</P> */
         String PACKAGE = "package";
-        /** The package display name <P>Type: STRING</P> */
-        String DISPLAY_NAME = "display_name";
         /** Auth status <P>Type: INTEGER</P> */
-        String AUTHORIZATION = "authorization";  // <<<<<<<< enum ???
+        String AUTHORIZATION = "authorization";
+        
+        enum Auth { 
+            UNKNOWN(1), ALLOW(2), BLOCK(3), ASK(4);
+            
+            private final int value;
+
+            Auth(int value) {
+                this.value = value;
+            }
+
+            public int getValue() {
+                return value;
+            }
+            
+            public static Auth valueOf(int i) {
+                return values()[i-1];
+            }
+        }; 
     }
     
     /** The table for caching the result of loading IM branding resources. */
@@ -2556,6 +2572,71 @@ public class Imps {
         /** The content:// style URL for this table. */
         public static final Uri CONTENT_URI = Uri
                 .parse("content://info.guardianproject.otr.app.im.provider.Imps/dataplugs");
+        
+        public static final Uri CONTENT_URI_BY_PACKAGE = Uri
+                .parse("content://info.guardianproject.otr.app.im.provider.Imps/dataplugsByPackage");
+  
+        /**
+         * insert
+         * 
+         * Insert a new dataplug package, based on ResolveInfo
+         * 
+         * @param resolver the content resolver.
+         */
+        public static final Uri insert(ContentResolver aResolver, String aPackageName, Auth aAuth) {
+            ContentValues values = new ContentValues();
+            values.put(PACKAGE, aPackageName);
+            values.put(AUTHORIZATION, aAuth.getValue());
+            Uri row = aResolver.insert(CONTENT_URI, values);
+            return row;
+        }
+        
+        public static final boolean update(ContentResolver aResolver, String aPackageName, Auth aAuth) {
+            ContentValues values = new ContentValues();
+            values.put(AUTHORIZATION, aAuth.getValue());
+            Uri uri = Uri.withAppendedPath(CONTENT_URI_BY_PACKAGE, aPackageName);
+            int updated = aResolver.update(uri, values, null, null ) ;
+            return updated == 1;
+        }
+
+        /**
+         * @param contentResolver
+         * @param packageName
+         * @return
+         */
+        public static Auth getAuthorization(ContentResolver aResolver, String aPackageName) {
+            String selection = PACKAGE + "=?";
+            String[] selectionArgs = new String[] { aPackageName };
+            
+            Auth retValue = Auth.UNKNOWN;
+
+            Cursor cursor = aResolver.query( CONTENT_URI, null, selection, selectionArgs, null ) ;
+            try {
+                if (cursor.moveToFirst()) {
+                    retValue = Auth.valueOf(cursor.getInt(cursor.getColumnIndex(AUTHORIZATION)));
+                } else {
+                    insert(aResolver, aPackageName, Auth.UNKNOWN);
+                }
+            } finally {
+                cursor.close();
+            }
+
+            return retValue;
+        }
+        
+        public static boolean isKnown(ContentResolver aResolver, String aPackageName) {
+            return getAuthorization(aResolver, aPackageName) != Auth.UNKNOWN;
+        }
+
+        /**
+         * @param contentResolver
+         * @param packageName
+         * @param i
+         */
+        public static void authorize(ContentResolver aResolver, String aPackageName, Auth aAuth) {
+            update(aResolver, aPackageName, aAuth);
+        }
+        
     }
 
 

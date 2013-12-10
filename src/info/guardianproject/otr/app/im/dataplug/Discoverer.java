@@ -51,7 +51,7 @@ public class Discoverer {
     }
 
     /** Initiate discovery of local DataPlugs */
-    public void discoverDataPlugs() {
+    public List<ResolveInfo> discoverDataPlugs() {
         Intent intent = new Intent(Api.ACTION_DISCOVER);
         
         PackageManager pm = mContext.getPackageManager();
@@ -68,10 +68,9 @@ public class Discoverer {
             discoverIntent.putExtra(Api.EXTRA_TOKEN, token);
             mContext.startService(discoverIntent);
         }
-        // invoke authorization for new plugins
-        AuthorizationActivity.startActivity(mContext, list);
-        
+
         Log.i(Api.DATAPLUG_TAG, "dataplugs end.");
+        return list;
     }
 
     public void activatePlug(String accountId, String friendId, String uri) {

@@ -211,7 +211,6 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
         mNeedCheckAutoLogin = true;
 
         HeartbeatService.startBeating(getApplicationContext());
-        Discoverer.getInstance(this).discoverDataPlugs();
     }
     
     private void startForegroundCompat() {
@@ -730,6 +729,11 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
         {
             mKillProcessOnStop = killProcessOnStop;
         }
+
+        @Override
+        public List discoverDataplugs() throws RemoteException {
+            return Discoverer.getInstance(RemoteImService.this).discoverDataPlugs();
+        }
         
     };
     
@@ -807,7 +811,7 @@ public class RemoteImService extends Service implements OtrEngineListener, ImSer
         }
         return null;
     }
-
+    
     public DataPlugger getDataPlugger() {
         return mDataPlugger;
     }

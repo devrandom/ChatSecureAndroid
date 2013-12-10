@@ -437,5 +437,13 @@ android:anyDensity="true"
              android:noHistory="true"
              android:stateNotNeeded="true"
              android:theme="@android:style/Theme.NoDisplay" />
+        
+        <activity android:name=".dataplug.AuthorizationActivity" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        
 </application>
 </manifest>

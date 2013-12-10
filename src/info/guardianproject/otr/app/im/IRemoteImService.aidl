@@ -75,4 +75,7 @@ interface IRemoteImService {
     * get interface to keymanager/store singleton
     **/
     IOtrKeyManager getOtrKeyManager ();
+    
+    /** Discover and list dataplugs */
+    List discoverDataplugs();
 }
