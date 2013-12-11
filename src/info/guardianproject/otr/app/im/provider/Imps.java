@@ -2548,8 +2548,11 @@ public class Imps {
         /** Auth status <P>Type: INTEGER</P> */
         String AUTHORIZATION = "authorization";
         
-        enum Auth { 
-            UNKNOWN(1), ALLOW(2), BLOCK(3), ASK(4);
+        enum Auth {
+            DO_NOT_USE(0),
+            UNKNOWN(1), // once discovered, but not authorized yet 
+            ALLOW(2), BLOCK(3), 
+            ASK(4); // ask every time
             
             private final int value;
 
@@ -2562,7 +2565,7 @@ public class Imps {
             }
             
             public static Auth valueOf(int i) {
-                return values()[i-1];
+                return values()[i];
             }
         }; 
     }

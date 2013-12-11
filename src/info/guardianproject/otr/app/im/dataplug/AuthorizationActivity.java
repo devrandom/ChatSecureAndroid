@@ -3,7 +3,9 @@
  */
 package info.guardianproject.otr.app.im.dataplug;
 
+import info.guardianproject.otr.app.im.R;
 import info.guardianproject.otr.app.im.provider.Imps;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,6 +13,7 @@ import com.google.common.collect.Lists;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
@@ -18,6 +21,11 @@ import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
 import android.os.Bundle;
 import android.os.Parcelable;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.Spinner;
+import android.widget.TextView;
 
 /**
  *
@@ -78,17 +86,54 @@ public class AuthorizationActivity extends Activity {
 
     private void authorize(final String packageName) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setPositiveButton("OK", new OnClickListener() {
+        View view = LayoutInflater.from(this).inflate(R.layout.dataplug_authorization_single, null);
+        TextView packagenameTextView = (TextView) view.findViewById(R.id.dataplug_auth_packagename);
+        packagenameTextView.setText( packageName );
+        
+        final AuthSpinner authSpinner = new AuthSpinner( this, (Spinner) view.findViewById(R.id.dataplug_auth_options) );
+        
+        builder.setTitle( R.string.dataplug_unknown_plugin_found);
+        builder.setView(view);
+        builder.setPositiveButton(getString(R.string.ok), new OnClickListener() {
             
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                // TODO add UI for all options
-                Imps.Dataplugs.Auth auth = Imps.Dataplugs.Auth.ALLOW;
+                Imps.Dataplugs.Auth auth = authSpinner.getSelected();
                 Imps.Dataplugs.authorize( getContentResolver(), packageName, auth);
                 doList();
             }
         });
-        builder.setMessage(packageName);
         builder.create().show();
+    }
+    
+    class AuthSpinner {
+        private Spinner mSpinner;
+        private Imps.Dataplugs.Auth[] mPresets = {
+            Imps.Dataplugs.Auth.ALLOW,
+            Imps.Dataplugs.Auth.BLOCK,
+            Imps.Dataplugs.Auth.ASK,
+        };
+
+        public AuthSpinner( Context aContext, Spinner aSpinner ) {
+            mSpinner = aSpinner;
+            init( aContext );
+        }
+        
+        private void init(Context aContext) {
+            String[] strings = aContext.getResources().getStringArray(R.array.dataplug_authorization_options);
+            List<String> list = new ArrayList<String>();
+            for( Imps.Dataplugs.Auth auth : mPresets ) {
+                list.add( strings[ auth.getValue()] );
+            }
+            ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(aContext, android.R.layout.simple_spinner_item, list);
+            arrayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            mSpinner.setAdapter(arrayAdapter);        
+        }
+        
+        public Imps.Dataplugs.Auth getSelected() {
+            int selected = mSpinner.getSelectedItemPosition();
+            return mPresets[selected];
+        }
+        
     }
 }
