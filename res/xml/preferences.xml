@@ -119,6 +119,11 @@
     android:title="@string/hide_offline_contacts"
     android:defaultValue="false" />
    
+   <Preference
+       android:key="pref_plugin_authorization"
+       android:title="@string/dataplugs_plugins_authorization_" 
+       />
+   
   </PreferenceCategory>
   
   <PreferenceCategory android:title="@string/notification_group_title">

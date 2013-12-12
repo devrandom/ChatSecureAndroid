@@ -18,6 +18,7 @@
 package info.guardianproject.otr.app.im.app;
 
 import info.guardianproject.otr.app.im.R;
+import info.guardianproject.otr.app.im.dataplug.AuthorizationActivity;
 import info.guardianproject.otr.app.im.provider.Imps;
 import info.guardianproject.otr.app.im.provider.Imps.ProviderSettings;
 import android.app.AlertDialog;
@@ -128,6 +129,16 @@ public class SettingActivity extends SherlockPreferenceActivity implements
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         addPreferencesFromResource(R.xml.preferences);
+        
+        Preference plugin = findPreference("pref_plugin_authorization");
+        plugin.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+            
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                AuthorizationActivity.doSettings(SettingActivity.this);
+                return true;
+            }
+        });
 
         mHideOfflineContacts = (CheckBoxPreference) findPreference("pref_hide_offline_contacts");
         mOtrMode = (ListPreference) findPreference("pref_security_otr_mode");
