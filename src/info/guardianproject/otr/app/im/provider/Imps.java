@@ -2648,9 +2648,6 @@ public class Imps {
                     Auth auth = Auth.valueOf(cursor.getInt(cursor.getColumnIndex(AUTHORIZATION)));
                     String packageName = cursor.getString(cursor.getColumnIndex(PACKAGE));
                     list.add( new AuthItem(packageName, auth) );
-                    list.add( new AuthItem(packageName+"1", auth) );
-                    list.add( new AuthItem(packageName+"2", auth) );
-                    list.add( new AuthItem(packageName+"3", auth) );
                 }
             } finally {
                 cursor.close();

@@ -4,7 +4,6 @@
 package info.guardianproject.otr.app.im.dataplug;
 
 import info.guardianproject.otr.app.im.R;
-import info.guardianproject.otr.app.im.app.ChatListAdapter;
 import info.guardianproject.otr.app.im.provider.Imps;
 import info.guardianproject.otr.app.im.provider.Imps.DataplugsColumns.Auth;
 import info.guardianproject.otr.app.im.provider.Imps.DataplugsColumns.AuthItem;
@@ -16,7 +15,6 @@ import com.google.common.collect.Lists;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
@@ -29,7 +27,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
@@ -102,6 +99,7 @@ public class AuthorizationActivity extends Activity {
         packagenameTextView.setText( packageName );
         
         final AuthSpinner authSpinner = new AuthSpinner( this, (Spinner) view.findViewById(R.id.dataplug_auth_options) );
+        authSpinner.setSelection( Imps.Dataplugs.Auth.BLOCK ); // default to block
         
         builder.setTitle( R.string.dataplug_unknown_plugin_found);
         builder.setView(view);
