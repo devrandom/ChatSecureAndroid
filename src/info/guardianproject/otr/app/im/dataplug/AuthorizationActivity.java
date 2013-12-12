@@ -19,8 +19,12 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.view.LayoutInflater;
@@ -30,6 +34,7 @@ import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -101,7 +106,7 @@ public class AuthorizationActivity extends Activity {
         final AuthSpinner authSpinner = new AuthSpinner( this, (Spinner) view.findViewById(R.id.dataplug_auth_options) );
         authSpinner.setSelection( Imps.Dataplugs.Auth.BLOCK ); // default to block
         
-        builder.setTitle( R.string.dataplug_unknown_plugin_found);
+        builder.setTitle( R.string.dataplug_new_plugin_found);
         builder.setView(view);
         builder.setPositiveButton(getString(R.string.ok), new OnClickListener() {
             
@@ -193,6 +198,17 @@ public class AuthorizationActivity extends Activity {
         public AuthAdapter(Context aContext) {
             mContext = aContext;
             mList = Imps.Dataplugs.getAll(aContext.getContentResolver());
+            for( AuthItem item : mList ) {
+                PackageManager pm = getApplicationContext().getPackageManager();
+                try {
+                    ApplicationInfo ai = pm.getApplicationInfo( item.packageName, 0);
+                    item.applicationLabel = (String) pm.getApplicationLabel(ai);              
+                    item.applicationIcon = pm.getApplicationIcon( item.packageName ); 
+                } catch (final NameNotFoundException e) {
+                    throw new RuntimeException("Invalid package " + item.packageName);
+                }
+            }
+                
         }
         
         public List<AuthItem> getList() {
@@ -237,8 +253,9 @@ public class AuthorizationActivity extends Activity {
             }
             AuthItem item = (AuthItem) getItem(position);
             // package name
-            TextView textView = (TextView) view.findViewById(R.id.dataplug_auth_packagename);
-            textView.setText( item.packageName );
+            ((TextView) view.findViewById(R.id.dataplug_auth_applabel)).setText( item.applicationLabel );
+            ((TextView) view.findViewById(R.id.dataplug_auth_packagename)).setText( item.packageName );
+            ((ImageView) view.findViewById(R.id.dataplug_auth_icon)).setImageDrawable(item.applicationIcon);
             // spinner
             final AuthSpinner authSpinner = new AuthSpinner( mContext, (Spinner) view.findViewById(R.id.dataplug_auth_options) );
             authSpinner.setSelection( ((AuthItem)mList.get(position)).auth );
@@ -247,7 +264,6 @@ public class AuthorizationActivity extends Activity {
 
                 @Override
                 public void onItemSelected(AdapterView<?> parent, View view, int spinnerPosition, long id) {
-                    Imps.Dataplugs.Auth a = authSpinner.getSelectedItem();
                     ((AuthItem)mList.get(position)).auth = authSpinner.getSelectedItem();
                 }
 

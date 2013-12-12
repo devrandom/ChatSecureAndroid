@@ -29,6 +29,7 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.net.Uri.Builder;
 import android.os.Handler;
@@ -2579,7 +2580,8 @@ public class Imps {
             }
             public Auth auth;
             public String packageName;
-            public String displayName;
+            public String applicationLabel;
+            public Drawable applicationIcon;
         }
     }
     
@@ -2644,7 +2646,8 @@ public class Imps {
             Cursor cursor = aResolver.query( CONTENT_URI, null, null, null, null ) ;
             List<AuthItem> list = new ArrayList<AuthItem>();
             try {
-                if (cursor.moveToFirst()) {
+                cursor.moveToPosition(-1);
+                while (cursor.moveToNext()) {
                     Auth auth = Auth.valueOf(cursor.getInt(cursor.getColumnIndex(AUTHORIZATION)));
                     String packageName = cursor.getString(cursor.getColumnIndex(PACKAGE));
                     list.add( new AuthItem(packageName, auth) );

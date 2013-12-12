@@ -898,7 +898,7 @@
         <item>Ask Every Time</item>
     </string-array>
     
-    <string name="dataplug_unknown_plugin_found">Unknown Plugin Found</string>
+    <string name="dataplug_new_plugin_found">New Plugin Found</string>
     <string name="dataplug_plugin_authorization">Plugin Authorization</string>
     <string name="dataplug_plugin_value_modified">This value can be later modified in &quot;Settings&quot;</string>
     
