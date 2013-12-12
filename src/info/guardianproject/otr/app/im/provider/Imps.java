@@ -17,8 +17,11 @@
 package info.guardianproject.otr.app.im.provider;
 
 import info.guardianproject.otr.app.im.app.ImApp;
+import info.guardianproject.otr.app.im.provider.Imps.DataplugsColumns.AuthItem;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import android.content.ContentQueryMap;
 import android.content.ContentResolver;
@@ -2568,6 +2571,16 @@ public class Imps {
                 return values()[i];
             }
         }; 
+        
+        class AuthItem {
+            public AuthItem(String aPackageName, Auth aAuth) {
+                this.packageName = aPackageName;
+                this.auth = aAuth;
+            }
+            public Auth auth;
+            public String packageName;
+            public String displayName;
+        }
     }
     
     /** The table for caching the result of loading IM branding resources. */
@@ -2627,6 +2640,25 @@ public class Imps {
             return retValue;
         }
         
+        public static List<AuthItem> getAll(ContentResolver aResolver) {
+            Cursor cursor = aResolver.query( CONTENT_URI, null, null, null, null ) ;
+            List<AuthItem> list = new ArrayList<AuthItem>();
+            try {
+                if (cursor.moveToFirst()) {
+                    Auth auth = Auth.valueOf(cursor.getInt(cursor.getColumnIndex(AUTHORIZATION)));
+                    String packageName = cursor.getString(cursor.getColumnIndex(PACKAGE));
+                    list.add( new AuthItem(packageName, auth) );
+                    list.add( new AuthItem(packageName+"1", auth) );
+                    list.add( new AuthItem(packageName+"2", auth) );
+                    list.add( new AuthItem(packageName+"3", auth) );
+                }
+            } finally {
+                cursor.close();
+            }
+
+            return list;
+        }
+        
         public static boolean isKnown(ContentResolver aResolver, String aPackageName) {
             return getAuthorization(aResolver, aPackageName) != Auth.UNKNOWN;
         }
@@ -2639,8 +2671,15 @@ public class Imps {
         public static void authorize(ContentResolver aResolver, String aPackageName, Auth aAuth) {
             update(aResolver, aPackageName, aAuth);
         }
-        
+
+        /**
+         * @param aContentResolver 
+         * @param aItems
+         */
+        public static void setAuthorization(ContentResolver aContentResolver, List<AuthItem> aItems) {
+            for( AuthItem item : aItems ) {
+                update(aContentResolver, item.packageName, item.auth);
+            }
+        }
     }
-
-
 }

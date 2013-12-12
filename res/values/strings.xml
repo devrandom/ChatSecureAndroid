@@ -888,4 +888,18 @@
     <string name="button_yes_accept_all">Yes, Accept All</string>
     
     <string name="app_unlocked">Activated &amp; unlocked</string>
+    
+    <!-- Dataplug authorization options -->
+    <string-array name="dataplug_authorization_options">
+        <item>unused</item>
+        <item>Unknown</item>
+        <item>Allow</item>
+        <item>Block</item>
+        <item>Ask Every Time</item>
+    </string-array>
+    
+    <string name="dataplug_unknown_plugin_found">Unknown Plugin Found</string>
+    <string name="dataplug_plugin_authorization">Plugin Authorization</string>
+    <string name="dataplug_plugin_value_modified">This value can be later modified in &quot;Settings&quot;</string>
+    
 </resources>
