@@ -901,5 +901,6 @@
     <string name="dataplug_new_plugin_found">New Plugin Found</string>
     <string name="dataplug_plugin_authorization">Plugin Authorization</string>
     <string name="dataplug_plugin_value_modified">This value can be later modified in &quot;Settings&quot;</string>
+    <string name="dataplugs_plugins_authorization_">Plugins Authorization...</string>
     
 </resources>
