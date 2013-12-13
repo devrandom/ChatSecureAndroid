@@ -124,6 +124,11 @@
        android:title="@string/dataplugs_plugins_authorization_" 
        />
    
+   <Preference
+       android:key="pref_avatar_image"
+       android:title="@string/settings_avatar_image_"/>
+   
+   
   </PreferenceCategory>
   
   <PreferenceCategory android:title="@string/notification_group_title">

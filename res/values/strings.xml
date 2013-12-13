@@ -902,5 +902,9 @@
     <string name="dataplug_plugin_authorization">Plugin Authorization</string>
     <string name="dataplug_plugin_value_modified">This value can be later modified in &quot;Settings&quot;</string>
     <string name="dataplugs_plugins_authorization_">Plugins Authorization...</string>
+    <string name="settings_avatar_image_">Avatar Image...</string>
+    <string name="settings_set_avatar_image">Set Avatar Image</string>
+    <string name="settings_take_photo">Take Photo</string>
+    <string name="settings_select_existing">Select Existing</string>
     
 </resources>

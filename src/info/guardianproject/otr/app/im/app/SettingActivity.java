@@ -17,30 +17,63 @@
 
 package info.guardianproject.otr.app.im.app;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
+
+import org.apache.commons.io.FileUtils;
+
 import info.guardianproject.otr.app.im.R;
+import info.guardianproject.otr.app.im.dataplug.AuthAdapter;
 import info.guardianproject.otr.app.im.dataplug.AuthorizationActivity;
 import info.guardianproject.otr.app.im.provider.Imps;
 import info.guardianproject.otr.app.im.provider.Imps.ProviderSettings;
+import info.guardianproject.otr.app.im.provider.Imps.DataplugsColumns.AuthItem;
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.DialogInterface.OnClickListener;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.media.ExifInterface;
+import android.media.MediaScannerConnection;
+import android.media.MediaScannerConnection.MediaScannerConnectionClient;
+import android.media.MediaScannerConnection.OnScanCompletedListener;
+import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.SystemClock;
 import android.preference.CheckBoxPreference;
 import android.preference.EditTextPreference;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceClickListener;
+import android.provider.MediaStore;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.ImageView;
+import android.widget.ListView;
 
 import com.actionbarsherlock.app.SherlockPreferenceActivity;
 
 public class SettingActivity extends SherlockPreferenceActivity implements
         OnSharedPreferenceChangeListener {
     private static final int DEFAULT_HEARTBEAT_INTERVAL = 1;
+    private static final int REQUEST_CODE_TAKE_PHOTO = 1001;
+    private static final int REQUEST_CODE_SELECT_EXISTING = 1002;
     ListPreference mOtrMode;
     CheckBoxPreference mHideOfflineContacts;
     CheckBoxPreference mEnableNotification;
@@ -130,6 +163,16 @@ public class SettingActivity extends SherlockPreferenceActivity implements
         super.onCreate(savedInstanceState);
         addPreferencesFromResource(R.xml.preferences);
         
+        Preference avatar = findPreference("pref_avatar_image");
+        avatar.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+            
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                doAvatarImage(SettingActivity.this);
+                return true;
+            }
+        });
+
         Preference plugin = findPreference("pref_plugin_authorization");
         plugin.setOnPreferenceClickListener(new OnPreferenceClickListener() {
             
@@ -187,6 +230,19 @@ public class SettingActivity extends SherlockPreferenceActivity implements
         }
         super.onActivityResult(requestCode, resultCode, data);
         
+        if(requestCode == REQUEST_CODE_TAKE_PHOTO) {
+            if( resultCode == RESULT_OK ) {
+                onActivityResultTakePhoto();
+            }
+            return;
+        }
+        
+        if(requestCode == REQUEST_CODE_SELECT_EXISTING) {
+            if( resultCode == RESULT_OK ) {
+                onActivityResultSelectExisting(data);
+            }
+            return;
+        }
     }
 
     private void showThemeChooserDialog ()
@@ -236,5 +292,160 @@ public class SettingActivity extends SherlockPreferenceActivity implements
         getPreferenceScreen().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(
                 this);
     }
+    
+    private ImageView mAvatarImageView;
+    
+    protected void doAvatarImage( final Context aContext) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(aContext);
+        View view = LayoutInflater.from(aContext).inflate(R.layout.settings_avatar_image, null);
+        mAvatarImageView = (ImageView) view.findViewById(R.id.settings_avatar_image);
+        view.findViewById(R.id.settings_avatar_select_existing).setOnClickListener( new View.OnClickListener() {
 
+            @Override
+            public void onClick(View v) {
+                onClickSelectExisting( aContext );
+            }
+        });
+        
+        view.findViewById(R.id.settings_avatar_take_photo).setOnClickListener( new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                onClickTakePhoto( aContext );
+            }
+        });
+        
+        builder.setTitle( R.string.settings_set_avatar_image);
+        builder.setView(view);
+        builder.setNegativeButton(aContext.getString(R.string.cancel), null);
+        builder.setPositiveButton(aContext.getString(R.string.ok), new OnClickListener() {
+            
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+            }
+        });
+        builder.create().show();
+    }
+
+    protected void onClickSelectExisting(Context aContext) {
+        Intent intent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        intent.setType("image/*");
+        startActivityForResult(intent,REQUEST_CODE_SELECT_EXISTING);
+    }
+    
+    Uri mImageCaptureUri;
+    
+    protected void onClickTakePhoto(Context aContext) {
+        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        mImageCaptureUri = getImageCaptureUri();
+        intent.putExtra(MediaStore.EXTRA_OUTPUT,mImageCaptureUri);
+        startActivityForResult(intent,REQUEST_CODE_TAKE_PHOTO);
+    }
+    
+    private Uri getImageCaptureUri() {
+        String filename = "IMG_" + System.currentTimeMillis() + ".jpg"; // TODO IMG_date_time.jpg
+        File imageFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),filename);
+        boolean exists = imageFile.exists();
+        Uri uri = Uri.fromFile(imageFile);
+        return Uri.fromFile(imageFile);
+    }
+    
+    private void onActivityResultSelectExisting(Intent data) {
+        if( data == null ) {
+            return;
+        }
+        Uri uri = data.getData();
+        mImageCaptureUri = Uri.fromFile( new File(getPath(uri)) );
+        try {
+            Bitmap bitmap = getCroppedBitmap() ;
+            mAvatarImageView.setImageBitmap(bitmap);
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+
+    private void onActivityResultTakePhoto() {
+        getContentResolver().notifyChange(mImageCaptureUri, null);
+        
+        try {
+            Bitmap bitmap = getCroppedBitmap() ;
+            mAvatarImageView.setImageBitmap(bitmap);
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+    
+    private Bitmap getCroppedBitmap() throws IOException {
+        Bitmap finalBitmap;
+        Bitmap sourceBitmap = getScaledBitmap(mImageCaptureUri.getPath(), 256);
+        
+        ExifInterface exif = new ExifInterface( mImageCaptureUri.getPath() );
+        int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, 1);
+        if( orientation == ExifInterface.ORIENTATION_ROTATE_90 ) { // 6
+            Bitmap croppedBitmap = ThumbnailUtils.extractThumbnail(sourceBitmap, 128, 128);
+            finalBitmap = bitmapRotate( croppedBitmap, 90);
+        } else if( orientation == ExifInterface.ORIENTATION_ROTATE_270 ) { // 8
+            Bitmap croppedBitmap = ThumbnailUtils.extractThumbnail(sourceBitmap, 128, 128);
+            finalBitmap = bitmapRotate( croppedBitmap, 270);
+        } else {
+            finalBitmap = ThumbnailUtils.extractThumbnail(sourceBitmap, 128, 128);
+        }
+        return finalBitmap;
+    }
+
+    public static Bitmap bitmapRotate(Bitmap aSourcBitmap, int aDegrees) {
+        if( aDegrees == 0  ||  aSourcBitmap == null ) {
+            return aSourcBitmap ;
+        }
+        Matrix m = new Matrix();
+
+        m.setRotate(aDegrees, (float) aSourcBitmap.getWidth() / 2, (float) aSourcBitmap.getHeight() / 2);
+        Bitmap targetBitmap = Bitmap.createBitmap(aSourcBitmap, 0, 0, aSourcBitmap.getWidth(), aSourcBitmap.getHeight(), m, true);
+        return targetBitmap;
+    }
+    
+
+    public static Bitmap getScaledBitmap( String aPath, int destWidth ) throws IOException {
+        InputStream is = new FileInputStream(new File( aPath ));
+        BitmapFactory.Options bitmapOptions = new BitmapFactory.Options();
+        bitmapOptions.inJustDecodeBounds = true;
+        BitmapFactory.decodeStream(is, null, bitmapOptions);
+        is.close();
+        is = null;
+        
+        if(destWidth == 0) destWidth = bitmapOptions.outWidth;
+//        if(destHeight == 0) destHeight = bitmapOptions.outHeight;
+        int widthScale = bitmapOptions.outWidth / destWidth;
+//        int heightScale = bitmapOptions.outHeight / destHeight;
+//        int targetScale = widthScale < heightScale ? widthScale : heightScale;
+        bitmapOptions.inSampleSize = widthScale;
+        bitmapOptions.inJustDecodeBounds = false;
+
+        is = new FileInputStream(new File( aPath ));
+        Bitmap bitmap = BitmapFactory.decodeStream(is, null, bitmapOptions);
+        is.close();
+        is = null;
+        return bitmap;
+    }
+    
+    public String getPath(Uri uri) { 
+        String filename = null;
+        Cursor cursor = getContentResolver().query(uri, null, null, null, null);
+        if( cursor == null) {
+            throw new RuntimeException("Error getting filename for " + uri);
+        }
+        try {
+            if( !cursor.moveToFirst()) {
+                throw new RuntimeException("Error getting filename for " + uri);
+            }
+            int index = cursor.getColumnIndex(MediaStore.Images.ImageColumns.DATA);
+            filename = cursor.getString(index);
+        } finally {
+            cursor.close() ;
+        }
+        return filename ;
+    }     
+    
 }
