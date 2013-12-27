@@ -20,19 +20,17 @@ package info.guardianproject.otr.app.im.app;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.List;
-
-import org.apache.commons.io.FileUtils;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 import info.guardianproject.otr.app.im.R;
-import info.guardianproject.otr.app.im.dataplug.AuthAdapter;
 import info.guardianproject.otr.app.im.dataplug.AuthorizationActivity;
 import info.guardianproject.otr.app.im.provider.Imps;
 import info.guardianproject.otr.app.im.provider.Imps.ProviderSettings;
-import info.guardianproject.otr.app.im.provider.Imps.DataplugsColumns.AuthItem;
-import android.app.Activity;
+import info.guardianproject.util.BitmapUtils;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -44,29 +42,18 @@ import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Matrix;
-import android.media.ExifInterface;
-import android.media.MediaScannerConnection;
-import android.media.MediaScannerConnection.MediaScannerConnectionClient;
-import android.media.MediaScannerConnection.OnScanCompletedListener;
-import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.SystemClock;
 import android.preference.CheckBoxPreference;
 import android.preference.EditTextPreference;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceClickListener;
 import android.provider.MediaStore;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
-import android.widget.ListView;
-
 import com.actionbarsherlock.app.SherlockPreferenceActivity;
 
 public class SettingActivity extends SherlockPreferenceActivity implements
@@ -74,6 +61,8 @@ public class SettingActivity extends SherlockPreferenceActivity implements
     private static final int DEFAULT_HEARTBEAT_INTERVAL = 1;
     private static final int REQUEST_CODE_TAKE_PHOTO = 1001;
     private static final int REQUEST_CODE_SELECT_EXISTING = 1002;
+    private static final int AVATAR_IMAGE_SIZE = 128;
+    private static final String AVATAR_FILENAME = "avatar.jpg";
     ListPreference mOtrMode;
     CheckBoxPreference mHideOfflineContacts;
     CheckBoxPreference mEnableNotification;
@@ -83,6 +72,8 @@ public class SettingActivity extends SherlockPreferenceActivity implements
     EditTextPreference mHeartbeatInterval;
     
     EditTextPreference mThemeBackground;
+    private ImageView mAvatarImageView;
+    private Uri mImageCaptureUri;
 
     private void setInitialValues() {
         ContentResolver cr = getContentResolver();
@@ -168,7 +159,7 @@ public class SettingActivity extends SherlockPreferenceActivity implements
             
             @Override
             public boolean onPreferenceClick(Preference preference) {
-                doAvatarImage(SettingActivity.this);
+                showAvatarImageDialog(SettingActivity.this);
                 return true;
             }
         });
@@ -233,6 +224,8 @@ public class SettingActivity extends SherlockPreferenceActivity implements
         if(requestCode == REQUEST_CODE_TAKE_PHOTO) {
             if( resultCode == RESULT_OK ) {
                 onActivityResultTakePhoto();
+            } else {
+                // Cancelled
             }
             return;
         }
@@ -240,6 +233,8 @@ public class SettingActivity extends SherlockPreferenceActivity implements
         if(requestCode == REQUEST_CODE_SELECT_EXISTING) {
             if( resultCode == RESULT_OK ) {
                 onActivityResultSelectExisting(data);
+            } else {
+                // Cancelled
             }
             return;
         }
@@ -293,12 +288,14 @@ public class SettingActivity extends SherlockPreferenceActivity implements
                 this);
     }
     
-    private ImageView mAvatarImageView;
-    
-    protected void doAvatarImage( final Context aContext) {
+    protected void showAvatarImageDialog( final Context aContext) {
         AlertDialog.Builder builder = new AlertDialog.Builder(aContext);
         View view = LayoutInflater.from(aContext).inflate(R.layout.settings_avatar_image, null);
         mAvatarImageView = (ImageView) view.findViewById(R.id.settings_avatar_image);
+        try {
+            getAvatarImage();
+        } catch ( IOException e) {
+        }
         view.findViewById(R.id.settings_avatar_select_existing).setOnClickListener( new View.OnClickListener() {
 
             @Override
@@ -322,9 +319,21 @@ public class SettingActivity extends SherlockPreferenceActivity implements
             
             @Override
             public void onClick(DialogInterface dialog, int which) {
+                onClickSetAvatarImage();
             }
         });
         builder.create().show();
+    }
+
+
+    protected void onClickSetAvatarImage() {
+        // TODO upload image to ???
+        try {
+            FileInputStream fis = openFileInput(AVATAR_FILENAME);
+        } catch (FileNotFoundException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
     }
 
     protected void onClickSelectExisting(Context aContext) {
@@ -333,8 +342,6 @@ public class SettingActivity extends SherlockPreferenceActivity implements
         startActivityForResult(intent,REQUEST_CODE_SELECT_EXISTING);
     }
     
-    Uri mImageCaptureUri;
-    
     protected void onClickTakePhoto(Context aContext) {
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         mImageCaptureUri = getImageCaptureUri();
@@ -342,95 +349,50 @@ public class SettingActivity extends SherlockPreferenceActivity implements
         startActivityForResult(intent,REQUEST_CODE_TAKE_PHOTO);
     }
     
-    private Uri getImageCaptureUri() {
-        String filename = "IMG_" + System.currentTimeMillis() + ".jpg"; // TODO IMG_date_time.jpg
-        File imageFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),filename);
-        boolean exists = imageFile.exists();
-        Uri uri = Uri.fromFile(imageFile);
-        return Uri.fromFile(imageFile);
-    }
-    
     private void onActivityResultSelectExisting(Intent data) {
-        if( data == null ) {
+        if( data == null  ||  data.getData() == null ) {
             return;
         }
-        Uri uri = data.getData();
-        mImageCaptureUri = Uri.fromFile( new File(getPath(uri)) );
         try {
-            Bitmap bitmap = getCroppedBitmap() ;
-            mAvatarImageView.setImageBitmap(bitmap);
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            Uri selectedUri = Uri.fromFile( new File(getPath( data.getData() )) );
+            setAvatarImage(selectedUri);
+        } catch (Throwable t) {
+            // OOM caught here
         }
     }
 
     private void onActivityResultTakePhoto() {
-        getContentResolver().notifyChange(mImageCaptureUri, null);
-        
         try {
-            Bitmap bitmap = getCroppedBitmap() ;
-            mAvatarImageView.setImageBitmap(bitmap);
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            setAvatarImage(mImageCaptureUri);
+        } catch (Throwable t) {
+            // OOM caught here
         }
     }
     
-    private Bitmap getCroppedBitmap() throws IOException {
-        Bitmap finalBitmap;
-        Bitmap sourceBitmap = getScaledBitmap(mImageCaptureUri.getPath(), 256);
+    private void setAvatarImage( Uri aUri ) throws IOException {
+        Bitmap avatarBitmap = BitmapUtils.getCroppedBitmap( aUri, AVATAR_IMAGE_SIZE ) ;
+        mAvatarImageView.setImageBitmap(avatarBitmap);
         
-        ExifInterface exif = new ExifInterface( mImageCaptureUri.getPath() );
-        int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, 1);
-        if( orientation == ExifInterface.ORIENTATION_ROTATE_90 ) { // 6
-            Bitmap croppedBitmap = ThumbnailUtils.extractThumbnail(sourceBitmap, 128, 128);
-            finalBitmap = bitmapRotate( croppedBitmap, 90);
-        } else if( orientation == ExifInterface.ORIENTATION_ROTATE_270 ) { // 8
-            Bitmap croppedBitmap = ThumbnailUtils.extractThumbnail(sourceBitmap, 128, 128);
-            finalBitmap = bitmapRotate( croppedBitmap, 270);
-        } else {
-            finalBitmap = ThumbnailUtils.extractThumbnail(sourceBitmap, 128, 128);
-        }
-        return finalBitmap;
-    }
-
-    public static Bitmap bitmapRotate(Bitmap aSourcBitmap, int aDegrees) {
-        if( aDegrees == 0  ||  aSourcBitmap == null ) {
-            return aSourcBitmap ;
-        }
-        Matrix m = new Matrix();
-
-        m.setRotate(aDegrees, (float) aSourcBitmap.getWidth() / 2, (float) aSourcBitmap.getHeight() / 2);
-        Bitmap targetBitmap = Bitmap.createBitmap(aSourcBitmap, 0, 0, aSourcBitmap.getWidth(), aSourcBitmap.getHeight(), m, true);
-        return targetBitmap;
+        // save image
+        FileOutputStream fos = openFileOutput(AVATAR_FILENAME, Context.MODE_PRIVATE);
+        avatarBitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
     }
     
-
-    public static Bitmap getScaledBitmap( String aPath, int destWidth ) throws IOException {
-        InputStream is = new FileInputStream(new File( aPath ));
-        BitmapFactory.Options bitmapOptions = new BitmapFactory.Options();
-        bitmapOptions.inJustDecodeBounds = true;
-        BitmapFactory.decodeStream(is, null, bitmapOptions);
-        is.close();
-        is = null;
-        
-        if(destWidth == 0) destWidth = bitmapOptions.outWidth;
-//        if(destHeight == 0) destHeight = bitmapOptions.outHeight;
-        int widthScale = bitmapOptions.outWidth / destWidth;
-//        int heightScale = bitmapOptions.outHeight / destHeight;
-//        int targetScale = widthScale < heightScale ? widthScale : heightScale;
-        bitmapOptions.inSampleSize = widthScale;
-        bitmapOptions.inJustDecodeBounds = false;
-
-        is = new FileInputStream(new File( aPath ));
-        Bitmap bitmap = BitmapFactory.decodeStream(is, null, bitmapOptions);
-        is.close();
-        is = null;
-        return bitmap;
+    private void getAvatarImage() throws IOException {
+        // read image
+        Bitmap avatarBitmap = BitmapFactory.decodeStream(openFileInput(AVATAR_FILENAME));
+        mAvatarImageView.setImageBitmap(avatarBitmap);
     }
     
-    public String getPath(Uri uri) { 
+    private Uri getImageCaptureUri() {
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd_hhmm", Locale.US); // TODO get locale 
+        String formattedDate = formatter.format( new Date(System.currentTimeMillis()));
+        String filename = "IMG_" + formattedDate + ".jpg";
+        File imageFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),filename);
+        return Uri.fromFile(imageFile);
+    }
+    
+    private String getPath(Uri uri) { 
         String filename = null;
         Cursor cursor = getContentResolver().query(uri, null, null, null, null);
         if( cursor == null) {
