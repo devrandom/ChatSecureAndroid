@@ -163,4 +163,24 @@ public class SystemServices {
         
         return info;
     }
+    
+    public static String getFilePath(Context aContext, Uri uri) { 
+        String filename = null;
+        Cursor cursor = aContext.getContentResolver().query(uri, null, null, null, null);
+        if( cursor == null) {
+            throw new RuntimeException("Error getting filename for " + uri);
+        }
+        try {
+            if( !cursor.moveToFirst()) {
+                throw new RuntimeException("Error getting filename for " + uri);
+            }
+            int index = cursor.getColumnIndex(MediaStore.Images.ImageColumns.DATA);
+            filename = cursor.getString(index);
+        } finally {
+            cursor.close() ;
+        }
+        return filename ;
+    }     
+    
+    
 }

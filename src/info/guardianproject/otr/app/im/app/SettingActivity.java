@@ -30,6 +30,7 @@ import info.guardianproject.otr.app.im.R;
 import info.guardianproject.otr.app.im.provider.Imps;
 import info.guardianproject.otr.app.im.provider.Imps.ProviderSettings;
 import info.guardianproject.util.BitmapUtils;
+import info.guardianproject.util.SystemServices;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -314,7 +315,6 @@ public class SettingActivity extends SherlockPreferenceActivity implements
         builder.create().show();
     }
 
-
     protected void onClickSetAvatarImage() {
         // TODO upload image to ???
         try {
@@ -326,24 +326,27 @@ public class SettingActivity extends SherlockPreferenceActivity implements
     }
 
     protected void onClickSelectExisting(Context aContext) {
+        // launch gallery
         Intent intent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         intent.setType("image/*");
         startActivityForResult(intent,REQUEST_CODE_SELECT_EXISTING);
     }
     
     protected void onClickTakePhoto(Context aContext) {
+        // launch camera, saving to DCIM
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        mImageCaptureUri = getImageCaptureUri();
+        mImageCaptureUri = BitmapUtils.getImageCaptureUri();
         intent.putExtra(MediaStore.EXTRA_OUTPUT,mImageCaptureUri);
         startActivityForResult(intent,REQUEST_CODE_TAKE_PHOTO);
     }
     
     private void onActivityResultSelectExisting(Intent data) {
+        // assert
         if( data == null  ||  data.getData() == null ) {
             return;
         }
         try {
-            Uri selectedUri = Uri.fromFile( new File(getPath( data.getData() )) );
+            Uri selectedUri = Uri.fromFile( new File(SystemServices.getFilePath( this, data.getData() )) );
             setAvatarImage(selectedUri);
         } catch (Throwable t) {
             // OOM caught here
@@ -359,9 +362,9 @@ public class SettingActivity extends SherlockPreferenceActivity implements
     }
     
     private void setAvatarImage( Uri aUri ) throws IOException {
+        // set the UI
         Bitmap avatarBitmap = BitmapUtils.getCroppedBitmap( aUri, AVATAR_IMAGE_SIZE ) ;
         mAvatarImageView.setImageBitmap(avatarBitmap);
-        
         // save image
         FileOutputStream fos = openFileOutput(AVATAR_FILENAME, Context.MODE_PRIVATE);
         avatarBitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
@@ -372,31 +375,4 @@ public class SettingActivity extends SherlockPreferenceActivity implements
         Bitmap avatarBitmap = BitmapFactory.decodeStream(openFileInput(AVATAR_FILENAME));
         mAvatarImageView.setImageBitmap(avatarBitmap);
     }
-    
-    private Uri getImageCaptureUri() {
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd_hhmm", Locale.US); // TODO get locale 
-        String formattedDate = formatter.format( new Date(System.currentTimeMillis()));
-        String filename = "IMG_" + formattedDate + ".jpg";
-        File imageFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),filename);
-        return Uri.fromFile(imageFile);
-    }
-    
-    private String getPath(Uri uri) { 
-        String filename = null;
-        Cursor cursor = getContentResolver().query(uri, null, null, null, null);
-        if( cursor == null) {
-            throw new RuntimeException("Error getting filename for " + uri);
-        }
-        try {
-            if( !cursor.moveToFirst()) {
-                throw new RuntimeException("Error getting filename for " + uri);
-            }
-            int index = cursor.getColumnIndex(MediaStore.Images.ImageColumns.DATA);
-            filename = cursor.getString(index);
-        } finally {
-            cursor.close() ;
-        }
-        return filename ;
-    }     
-    
 }

@@ -7,6 +7,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -14,6 +17,7 @@ import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.media.ThumbnailUtils;
 import android.net.Uri;
+import android.os.Environment;
 
 /**
  * 
@@ -73,5 +77,15 @@ public class BitmapUtils {
         is = null;
         return bitmap;
     }
+    
+    public static Uri getImageCaptureUri() {
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd_hhmm", Locale.US);
+        String formattedDate = formatter.format( new Date(System.currentTimeMillis()));
+        String filename = "IMG_" + formattedDate + ".jpg";
+        File imageFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),filename);
+        return Uri.fromFile(imageFile);
+    }
+    
+    
 
 }
