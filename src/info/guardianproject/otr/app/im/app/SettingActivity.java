@@ -17,29 +17,51 @@
 
 package info.guardianproject.otr.app.im.app;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
 import info.guardianproject.otr.app.im.R;
 import info.guardianproject.otr.app.im.provider.Imps;
 import info.guardianproject.otr.app.im.provider.Imps.ProviderSettings;
+import info.guardianproject.util.BitmapUtils;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.DialogInterface.OnClickListener;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.preference.CheckBoxPreference;
 import android.preference.EditTextPreference;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceClickListener;
-
+import android.provider.MediaStore;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.ImageView;
 import com.actionbarsherlock.app.SherlockPreferenceActivity;
 
 public class SettingActivity extends SherlockPreferenceActivity implements
         OnSharedPreferenceChangeListener {
     private static final int DEFAULT_HEARTBEAT_INTERVAL = 1;
+    private static final int REQUEST_CODE_TAKE_PHOTO = 1001;
+    private static final int REQUEST_CODE_SELECT_EXISTING = 1002;
+    private static final int AVATAR_IMAGE_SIZE = 128;
+    private static final String AVATAR_FILENAME = "avatar.jpg";
     ListPreference mOtrMode;
     CheckBoxPreference mHideOfflineContacts;
     CheckBoxPreference mEnableNotification;
@@ -49,6 +71,8 @@ public class SettingActivity extends SherlockPreferenceActivity implements
     EditTextPreference mHeartbeatInterval;
     
     EditTextPreference mThemeBackground;
+    private ImageView mAvatarImageView;
+    private Uri mImageCaptureUri;
 
     private void setInitialValues() {
         ContentResolver cr = getContentResolver();
@@ -128,6 +152,16 @@ public class SettingActivity extends SherlockPreferenceActivity implements
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         addPreferencesFromResource(R.xml.preferences);
+        
+        Preference avatar = findPreference("pref_avatar_image");
+        avatar.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+            
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                showAvatarImageDialog(SettingActivity.this);
+                return true;
+            }
+        });
 
         mHideOfflineContacts = (CheckBoxPreference) findPreference("pref_hide_offline_contacts");
         mOtrMode = (ListPreference) findPreference("pref_security_otr_mode");
@@ -176,6 +210,23 @@ public class SettingActivity extends SherlockPreferenceActivity implements
         }
         super.onActivityResult(requestCode, resultCode, data);
         
+        if(requestCode == REQUEST_CODE_TAKE_PHOTO) {
+            if( resultCode == RESULT_OK ) {
+                onActivityResultTakePhoto();
+            } else {
+                // Cancelled
+            }
+            return;
+        }
+        
+        if(requestCode == REQUEST_CODE_SELECT_EXISTING) {
+            if( resultCode == RESULT_OK ) {
+                onActivityResultSelectExisting(data);
+            } else {
+                // Cancelled
+            }
+            return;
+        }
     }
 
     private void showThemeChooserDialog ()
@@ -225,5 +276,127 @@ public class SettingActivity extends SherlockPreferenceActivity implements
         getPreferenceScreen().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(
                 this);
     }
+    
+    protected void showAvatarImageDialog( final Context aContext) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(aContext);
+        View view = LayoutInflater.from(aContext).inflate(R.layout.settings_avatar_image, null);
+        mAvatarImageView = (ImageView) view.findViewById(R.id.settings_avatar_image);
+        try {
+            getAvatarImage();
+        } catch ( IOException e) {
+        }
+        view.findViewById(R.id.settings_avatar_select_existing).setOnClickListener( new View.OnClickListener() {
 
+            @Override
+            public void onClick(View v) {
+                onClickSelectExisting( aContext );
+            }
+        });
+        
+        view.findViewById(R.id.settings_avatar_take_photo).setOnClickListener( new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                onClickTakePhoto( aContext );
+            }
+        });
+        
+        builder.setTitle( R.string.settings_set_avatar_image);
+        builder.setView(view);
+        builder.setNegativeButton(aContext.getString(R.string.cancel), null);
+        builder.setPositiveButton(aContext.getString(R.string.ok), new OnClickListener() {
+            
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                onClickSetAvatarImage();
+            }
+        });
+        builder.create().show();
+    }
+
+
+    protected void onClickSetAvatarImage() {
+        // TODO upload image to ???
+        try {
+            FileInputStream fis = openFileInput(AVATAR_FILENAME);
+        } catch (FileNotFoundException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+
+    protected void onClickSelectExisting(Context aContext) {
+        Intent intent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        intent.setType("image/*");
+        startActivityForResult(intent,REQUEST_CODE_SELECT_EXISTING);
+    }
+    
+    protected void onClickTakePhoto(Context aContext) {
+        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        mImageCaptureUri = getImageCaptureUri();
+        intent.putExtra(MediaStore.EXTRA_OUTPUT,mImageCaptureUri);
+        startActivityForResult(intent,REQUEST_CODE_TAKE_PHOTO);
+    }
+    
+    private void onActivityResultSelectExisting(Intent data) {
+        if( data == null  ||  data.getData() == null ) {
+            return;
+        }
+        try {
+            Uri selectedUri = Uri.fromFile( new File(getPath( data.getData() )) );
+            setAvatarImage(selectedUri);
+        } catch (Throwable t) {
+            // OOM caught here
+        }
+    }
+
+    private void onActivityResultTakePhoto() {
+        try {
+            setAvatarImage(mImageCaptureUri);
+        } catch (Throwable t) {
+            // OOM caught here
+        }
+    }
+    
+    private void setAvatarImage( Uri aUri ) throws IOException {
+        Bitmap avatarBitmap = BitmapUtils.getCroppedBitmap( aUri, AVATAR_IMAGE_SIZE ) ;
+        mAvatarImageView.setImageBitmap(avatarBitmap);
+        
+        // save image
+        FileOutputStream fos = openFileOutput(AVATAR_FILENAME, Context.MODE_PRIVATE);
+        avatarBitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+    }
+    
+    private void getAvatarImage() throws IOException {
+        // read image
+        Bitmap avatarBitmap = BitmapFactory.decodeStream(openFileInput(AVATAR_FILENAME));
+        mAvatarImageView.setImageBitmap(avatarBitmap);
+    }
+    
+    private Uri getImageCaptureUri() {
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd_hhmm", Locale.US); // TODO get locale 
+        String formattedDate = formatter.format( new Date(System.currentTimeMillis()));
+        String filename = "IMG_" + formattedDate + ".jpg";
+        File imageFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),filename);
+        return Uri.fromFile(imageFile);
+    }
+    
+    private String getPath(Uri uri) { 
+        String filename = null;
+        Cursor cursor = getContentResolver().query(uri, null, null, null, null);
+        if( cursor == null) {
+            throw new RuntimeException("Error getting filename for " + uri);
+        }
+        try {
+            if( !cursor.moveToFirst()) {
+                throw new RuntimeException("Error getting filename for " + uri);
+            }
+            int index = cursor.getColumnIndex(MediaStore.Images.ImageColumns.DATA);
+            filename = cursor.getString(index);
+        } finally {
+            cursor.close() ;
+        }
+        return filename ;
+    }     
+    
 }

@@ -372,6 +372,10 @@
     <!-- This is the text label selecting the ringtone. Clicking on this will take the user to
     the ringtone picker -->
     <string name="notification_ringtone_title">Use ChatSecure custom ringtone</string>
+    <string name="settings_avatar_image_">Profile Image...</string>
+    <string name="settings_set_avatar_image">Set Profile Image</string>
+    <string name="settings_select_existing">Select Existing</string>
+    <string name="settings_take_photo">Take Photo</string>
 
     <!-- Group chat invitation screen (Currently not used.) -->
     <!-- The prompt message displayed on the group chat invitation screen.-->

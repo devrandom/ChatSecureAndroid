@@ -119,6 +119,9 @@
     android:title="@string/hide_offline_contacts"
     android:defaultValue="false" />
    
+	<Preference
+		android:key="pref_avatar_image"
+		android:title="@string/settings_avatar_image_"/>   
   </PreferenceCategory>
   
   <PreferenceCategory android:title="@string/notification_group_title">
